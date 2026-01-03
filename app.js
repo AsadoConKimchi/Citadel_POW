@@ -627,6 +627,7 @@ const shareToDiscord = async () => {
     donationMode: donationMode?.value || "time",
     donationScope: donationScope?.value || "total",
     wordCount: Number(wordCountInput?.value || 0),
+    donationNote: donationNote?.value?.trim() || "",
   };
   try {
     const response = await fetch("/api/share", {

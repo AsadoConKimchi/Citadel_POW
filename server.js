@@ -231,6 +231,7 @@ app.post("/api/share", async (req, res) => {
     sats,
     donationMode,
     wordCount,
+    donationNote,
   } = req.body || {};
   if (!dataUrl) {
     res.status(400).json({ message: "공유할 이미지가 없습니다." });
@@ -251,8 +252,9 @@ app.post("/api/share", async (req, res) => {
     const modeLabel =
       donationMode === "words" ? `Words: ${wordCount}개` : `Study Time: ${minutes}분`;
     const username = req.session?.user?.username || "사용자";
+    const noteLabel = donationNote?.trim() ? `메모: ${donationNote.trim()}` : "메모: 없음";
     const payload = {
-      content: `${username}님께서 학습완료 후, ${sats} sats 기부!`,
+      content: `${username}님께서 학습완료 후, ${sats} sats 기부!\n${noteLabel}`,
     };
     form.append("payload_json", JSON.stringify(payload));
     const file = new Blob([parsed.buffer], { type: parsed.mime });
