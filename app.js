@@ -389,6 +389,7 @@ openCameraButton.addEventListener("click", async () => {
     cameraVideo.style.display = "block";
     snapshotCanvas.style.display = "none";
     photoPreview.style.display = "none";
+    badgeCanvas.style.display = "none";
   } catch (error) {
     alert("카메라를 열 수 없습니다. 권한을 확인해주세요.");
   }
@@ -404,6 +405,7 @@ captureButton.addEventListener("click", () => {
   snapshotCanvas.style.display = "block";
   cameraVideo.style.display = "none";
   photoPreview.style.display = "none";
+  badgeCanvas.style.display = "none";
   photoSource = snapshotCanvas;
   stopCamera();
 });
@@ -418,6 +420,7 @@ photoUpload.addEventListener("change", (event) => {
   photoPreview.style.display = "block";
   snapshotCanvas.style.display = "none";
   cameraVideo.style.display = "none";
+  badgeCanvas.style.display = "none";
   photoSource = photoPreview;
 });
 
@@ -469,6 +472,10 @@ const drawBadge = () => {
   const dataUrl = badgeCanvas.toDataURL("image/png");
   downloadLink.href = dataUrl;
   downloadLink.style.display = "inline-flex";
+  badgeCanvas.style.display = "block";
+  snapshotCanvas.style.display = "none";
+  cameraVideo.style.display = "none";
+  photoPreview.style.display = "none";
   if (shareStatus) {
     shareStatus.textContent = "디스코드 공유와 기부 연동은 서버에서 설정해야 합니다.";
   }
