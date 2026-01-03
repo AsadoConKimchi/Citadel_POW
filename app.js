@@ -7,6 +7,13 @@ const satsTotalEl = document.getElementById("sats-total");
 const finishButton = document.getElementById("finish");
 const studyPlanInput = document.getElementById("study-plan");
 const planStatus = document.getElementById("plan-status");
+const shareDiscordButton = document.getElementById("share-discord");
+const shareStatus = document.getElementById("share-status");
+const donationMode = document.getElementById("donation-mode");
+const wordCountField = document.getElementById("word-count-field");
+const wordRateField = document.getElementById("word-rate-field");
+const wordCountInput = document.getElementById("word-count");
+const wordRateInput = document.getElementById("word-rate");
 
 const startButton = document.getElementById("start");
 const pauseButton = document.getElementById("pause");
@@ -67,11 +74,13 @@ const setStoredTotal = (value) => {
 };
 
 const updateTotals = () => {
-  const totalMinutes = Math.floor(getStoredTotal() / 60);
-  totalTodayEl.textContent = `${totalMinutes}분`;
+  const totalSeconds = getStoredTotal();
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  totalTodayEl.textContent = `${String(minutes).padStart(2, "0")}분 ${String(seconds).padStart(2, "0")}초`;
   const goalMinutes = Number(goalInput.value || 0);
-  const progress = goalMinutes > 0 ? Math.min(100, Math.floor((totalMinutes / goalMinutes) * 100)) : 0;
-  goalProgressEl.textContent = `${progress}%`;
+  const progress = goalMinutes > 0 ? Math.min(100, (totalSeconds / 60 / goalMinutes) * 100) : 0;
+  goalProgressEl.textContent = `${progress.toFixed(1)}%`;
   updateSats();
 };
 
@@ -135,6 +144,14 @@ const finishSession = () => {
 };
 
 const updateSats = () => {
+  const mode = donationMode?.value || "time";
+  if (mode === "words") {
+    const words = Number(wordCountInput?.value || 0);
+    const rate = Number(wordRateInput?.value || 0);
+    const sats = words * rate;
+    satsTotalEl.textContent = `${sats} sats`;
+    return;
+  }
   const rate = Number(satsRateInput.value || 0);
   const totalMinutes = Math.floor(getStoredTotal() / 60);
   const sats = totalMinutes * rate;
@@ -255,6 +272,17 @@ finishButton.addEventListener("click", finishSession);
 
 satsRateInput.addEventListener("input", updateSats);
 goalInput.addEventListener("input", updateTotals);
+if (donationMode) {
+  donationMode.addEventListener("change", () => {
+    const isWords = donationMode.value === "words";
+    wordCountField?.classList.toggle("hidden", !isWords);
+    wordRateField?.classList.toggle("hidden", !isWords);
+    satsRateInput.closest("label")?.classList.toggle("hidden", isWords);
+    updateSats();
+  });
+}
+wordCountInput?.addEventListener("input", updateSats);
+wordRateInput?.addEventListener("input", updateSats);
 if (studyPlanInput) {
   studyPlanInput.addEventListener("input", saveStudyPlan);
 }
@@ -356,6 +384,48 @@ const drawBadge = () => {
   const dataUrl = badgeCanvas.toDataURL("image/png");
   downloadLink.href = dataUrl;
   downloadLink.style.display = "inline-flex";
+  if (shareStatus) {
+    shareStatus.textContent = "디스코드 공유와 기부 연동은 서버에서 설정해야 합니다.";
+  }
+};
+
+const shareToDiscord = async () => {
+  if (!badgeCanvas) {
+    return;
+  }
+  const dataUrl = badgeCanvas.toDataURL("image/png");
+  if (!dataUrl || dataUrl === "data:,") {
+    alert("먼저 인증 카드를 생성해주세요.");
+    return;
+  }
+  const payload = {
+    dataUrl,
+    language: studyLanguageInput.value || "언어 미입력",
+    topic: studyTopicInput.value || "주제 미입력",
+    minutes: Math.floor(getStoredTotal() / 60),
+    sats: Number((satsTotalEl.textContent || "0").replace(/\D/g, "")) || 0,
+    donationMode: donationMode?.value || "time",
+    wordCount: Number(wordCountInput?.value || 0),
+  };
+  try {
+    const response = await fetch("/api/share", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || "공유에 실패했습니다.");
+    }
+    const result = await response.json();
+    if (shareStatus) {
+      shareStatus.textContent = result.message || "디스코드 공유 완료!";
+    }
+  } catch (error) {
+    if (shareStatus) {
+      shareStatus.textContent = "공유에 실패했습니다. 서버 설정을 확인해주세요.";
+    }
+  }
 };
 
 generateButton.addEventListener("click", () => {
@@ -366,15 +436,25 @@ generateButton.addEventListener("click", () => {
   drawBadge();
 });
 
+if (shareDiscordButton) {
+  shareDiscordButton.addEventListener("click", shareToDiscord);
+}
+
 donateButton.addEventListener("click", () => {
   const totalMinutes = Math.floor(getStoredTotal() / 60);
-  const sats = totalMinutes * Number(satsRateInput.value || 0);
+  const mode = donationMode?.value || "time";
+  const sats =
+    mode === "words"
+      ? Number(wordCountInput?.value || 0) * Number(wordRateInput?.value || 0)
+      : totalMinutes * Number(satsRateInput.value || 0);
   const note = donationNote.value.trim();
   const history = JSON.parse(localStorage.getItem("citadel-donations") || "[]");
   history.push({
     date: todayKey,
     sats,
     minutes: totalMinutes,
+    mode,
+    words: Number(wordCountInput?.value || 0),
     note,
   });
   localStorage.setItem("citadel-donations", JSON.stringify(history));

@@ -117,6 +117,18 @@ textarea {
   min-height: 80px;
 }
 
+select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  background: #fff;
+}
+
+.hidden {
+  display: none;
+}
+
 button,
 .file {
   border: none;

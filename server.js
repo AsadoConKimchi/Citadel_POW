@@ -17,6 +17,8 @@ const {
   DISCORD_GUILD_ID,
   DISCORD_ROLE_ID,
   DISCORD_GUILD_NAME = "citadel.sx",
+  DISCORD_WEBHOOK_URL,
+  DONATION_WEBHOOK_URL,
   SESSION_SECRET,
   PORT = 3000,
 } = process.env;
@@ -202,6 +204,70 @@ app.post("/logout", (req, res) => {
   req.session.destroy(() => {
     res.status(204).end();
   });
+});
+
+const parseDataUrl = (dataUrl) => {
+  const match = dataUrl.match(/^data:(.+);base64,(.+)$/);
+  if (!match) {
+    return null;
+  }
+  return {
+    mime: match[1],
+    buffer: Buffer.from(match[2], "base64"),
+  };
+};
+
+app.post("/api/share", async (req, res) => {
+  if (!DISCORD_WEBHOOK_URL) {
+    res.status(501).json({ message: "DISCORD_WEBHOOK_URL이 설정되지 않았습니다." });
+    return;
+  }
+
+  const { dataUrl, language, topic, minutes, sats, donationMode, wordCount } = req.body || {};
+  if (!dataUrl) {
+    res.status(400).json({ message: "공유할 이미지가 없습니다." });
+    return;
+  }
+
+  const parsed = parseDataUrl(dataUrl);
+  if (!parsed) {
+    res.status(400).json({ message: "이미지 포맷이 올바르지 않습니다." });
+    return;
+  }
+
+  try {
+    const form = new FormData();
+    const modeLabel =
+      donationMode === "words" ? `Words: ${wordCount}개` : `Study Time: ${minutes}분`;
+    const payload = {
+      content: `오늘의 공부 인증\\nLanguage: ${language}\\nTopic: ${topic}\\n${modeLabel}\\nSats: ${sats} sats`,
+    };
+    form.set("payload_json", JSON.stringify(payload));
+    const file = new Blob([parsed.buffer], { type: parsed.mime });
+    form.set("file", file, "citadel_idioma_badge.png");
+
+    const response = await fetch(DISCORD_WEBHOOK_URL, {
+      method: "POST",
+      body: form,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || "Discord webhook failed");
+    }
+
+    if (DONATION_WEBHOOK_URL) {
+      await fetch(DONATION_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ minutes, sats, language, topic }),
+      });
+    }
+
+    res.json({ message: "디스코드 공유와 기부 요청을 완료했습니다." });
+  } catch (error) {
+    res.status(500).json({ message: "디스코드 공유에 실패했습니다." });
+  }
 });
 
 app.listen(Number(PORT), () => {
