@@ -250,8 +250,9 @@ app.post("/api/share", async (req, res) => {
     const goalRateLabel = goalRate || "0.0%";
     const modeLabel =
       donationMode === "words" ? `Words: ${wordCount}개` : `Study Time: ${minutes}분`;
+    const username = req.session?.user?.username || "사용자";
     const payload = {
-      content: `오늘의 공부 인증\\n학습목표: ${planLabel}\\nStudy Time: ${studyTimeLabel}\\nGoal Rate: ${goalRateLabel}\\n${modeLabel}\\nSats: ${sats} sats`,
+      content: `${username}님께서 학습완료 후, ${sats} sats 기부!`,
     };
     form.append("payload_json", JSON.stringify(payload));
     const file = new Blob([parsed.buffer], { type: parsed.mime });
