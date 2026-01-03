@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Citadel Idioma</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Citadel Idioma</p>
+        <h1>공부 시간을 사토시로 이어주는 학습 기록 앱</h1>
+        <p class="subtitle">
+          Discord 로그인을 시작으로, 타이머 기록 · 공부 인증 · 사토시 기부 흐름까지 한 번에.
+        </p>
+      </div>
+      <div class="card" id="discord-card">
+        <h2>Discord 로그인</h2>
+        <p class="muted">
+          <strong>시타델 회원 전용</strong><br />
+          시타델 이디오마는 지정된 디스코드 서버 회원만 사용할 수 있습니다.
+        </p>
+        <div class="row">
+          <span class="pill" id="allowed-server">접속 가능 서버: 확인 중...</span>
+        </div>
+        <div class="stack">
+          <div class="row">
+            <button id="discord-app-login" class="primary">App Login</button>
+            <button id="discord-web-login">Web Login</button>
+          </div>
+          <div class="profile" id="discord-profile">
+            <div class="banner" id="discord-banner"></div>
+            <div class="profile-body">
+              <img id="discord-avatar" alt="Discord avatar" />
+              <div>
+                <p class="profile-name" id="discord-username">로그인된 사용자 없음</p>
+                <p class="profile-meta" id="discord-guild">서버: -</p>
+              </div>
+            </div>
+          </div>
+          <div class="row status-row">
+            <span class="pill" id="discord-status">로그인 상태: 확인 중...</span>
+            <button id="discord-logout" class="ghost">로그아웃</button>
+          </div>
+          <p class="hint" id="discord-hint">
+            역할(Role) 권한은 Discord OAuth 콜백에서 확인됩니다.
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <main class="locked">
+      <section class="grid">
+        <div class="card">
+          <h2>학습 타이머</h2>
+          <div class="timer" id="timer-display">00:00:00</div>
+          <div class="stack">
+            <label>
+              오늘 목표 공부 시간 (분)
+              <input id="goal-minutes" type="number" min="1" value="120" />
+            </label>
+            <div class="row">
+              <button id="start" class="primary">시작</button>
+              <button id="pause">일시정지</button>
+              <button id="reset" class="ghost">리셋</button>
+            </div>
+            <div class="row">
+              <span class="pill">오늘 누적: <strong id="total-today">0분</strong></span>
+              <span class="pill">목표 달성률: <strong id="goal-progress">0%</strong></span>
+            </div>
+            <button id="finish" class="accent">공부 종료 & 인증하기</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>공부 인증 카드 만들기</h2>
+          <p class="muted">
+            카메라로 촬영하거나 사진을 업로드한 뒤, 학습 언어와 시간을 표시한 인증 이미지를
+            생성합니다.
+          </p>
+          <div class="stack">
+            <label>
+              공부한 언어
+              <input id="study-language" placeholder="예: Spanish" />
+            </label>
+            <label>
+              오늘 공부한 주제
+              <input id="study-topic" placeholder="예: 회화 3과" />
+            </label>
+            <div class="row">
+              <button id="open-camera">카메라 열기</button>
+              <label class="file">
+                사진 업로드
+                <input id="photo-upload" type="file" accept="image/*" />
+              </label>
+            </div>
+            <div class="preview">
+              <video id="camera" autoplay playsinline></video>
+              <canvas id="snapshot" width="640" height="480"></canvas>
+              <img id="photo-preview" alt="업로드 미리보기" />
+            </div>
+            <div class="row">
+              <button id="capture">촬영하기</button>
+              <button id="generate" class="primary">인증 카드 생성</button>
+            </div>
+            <div class="result">
+              <canvas id="badge" width="1080" height="1080"></canvas>
+              <a id="download" class="accent" download="citadel_idioma_badge.png">이미지 저장</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>사토시 기부 계산</h2>
+          <p class="muted">공부 시간에 따라 기부할 사토시를 계산하고 기록합니다.</p>
+          <div class="stack">
+            <label>
+              1분당 기부 사토시
+              <input id="sats-rate" type="number" min="1" value="10" />
+            </label>
+            <div class="row">
+              <span class="pill">오늘 기부 예상: <strong id="sats-total">0 sats</strong></span>
+            </div>
+            <label>
+              기부 메모 (선택)
+              <input id="donation-note" placeholder="예: 누적 공부 2시간 달성" />
+            </label>
+            <button id="donate" class="primary">기부 기록 저장</button>
+            <p class="hint" id="donation-status">실제 사토시 전송은 LNURL/지갑 연동이 필요합니다.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Citadel Idioma · 공부 기록을 사토시 기부로 연결합니다.</p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
