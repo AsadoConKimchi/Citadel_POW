@@ -158,7 +158,9 @@ button.ghost {
 }
 
 .pill {
-  background: #f3f4f6;
+  background: #e2e8f0;
+  color: #1f2937;
+  font-weight: 600;
   padding: 8px 12px;
   border-radius: 999px;
   font-size: 13px;
@@ -224,8 +226,12 @@ button.ghost {
 
 .profile-meta {
   margin: 4px 0 0;
-  color: #6b7280;
+  color: #475569;
   font-size: 13px;
+}
+
+#discord-card h2 {
+  color: #0f172a;
 }
 
 .result {
