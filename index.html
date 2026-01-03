@@ -24,11 +24,15 @@
         <div class="row">
           <span class="pill" id="allowed-server">접속 가능 서버: 확인 중...</span>
         </div>
-        <div class="stack">
-          <div class="row">
-            <button id="discord-app-login" class="primary">App Login</button>
-            <button id="discord-web-login">Web Login</button>
-          </div>
+          <div class="stack">
+            <div class="row">
+              <button id="discord-app-login" class="primary">App Login</button>
+              <button id="discord-web-login">Web Login</button>
+              <div id="login-user" class="login-user hidden">
+                <span class="login-label">로그인됨:</span>
+                <span id="login-user-name">-</span>
+              </div>
+            </div>
           <div class="profile" id="discord-profile">
             <div class="banner" id="discord-banner"></div>
             <div class="profile-body">
@@ -109,18 +113,14 @@
               <video id="camera" autoplay playsinline></video>
               <canvas id="snapshot" width="640" height="480"></canvas>
               <img id="photo-preview" alt="업로드 미리보기" />
+              <canvas id="badge" width="1080" height="1080"></canvas>
             </div>
             <div class="row">
               <button id="capture">촬영하기</button>
               <button id="generate" class="primary">인증 카드 생성</button>
             </div>
             <div class="result">
-              <canvas id="badge" width="1080" height="1080"></canvas>
               <a id="download" class="accent" download="citadel_idioma_badge.png">이미지 저장</a>
-              <button id="share-discord" class="primary">디스코드에 공유 &amp; 사토시 기부</button>
-              <p class="hint" id="share-status">
-                디스코드 공유와 기부 연동은 서버에서 설정해야 합니다.
-              </p>
             </div>
           </div>
         </div>
@@ -130,15 +130,29 @@
           <p class="muted">공부 시간에 따라 기부할 사토시를 계산하고 기록합니다.</p>
           <div class="stack">
             <label>
-              기부 계산 방식
-              <select id="donation-mode">
-                <option value="time">공부 시간 기준 (분당 사토시)</option>
-                <option value="words">단어 암기 기준 (단어당 사토시)</option>
+              기부 누적 방식
+              <select id="donation-scope">
+                <option value="session">회차 별 기부</option>
+                <option value="total">누적 기부</option>
               </select>
             </label>
             <label>
-              1분당 기부 사토시
-              <input id="sats-rate" type="number" min="1" value="10" />
+              기부 계산 방식
+              <select id="donation-mode">
+                <option value="time">공부 시간 기준</option>
+                <option value="words">공부량 기준 (암기 단어)</option>
+              </select>
+            </label>
+            <label>
+              기준 별 기부 사토시 양
+              <select id="sats-rate">
+                <option value="1">1 sats</option>
+                <option value="5">5 sats</option>
+                <option value="10" selected>10 sats</option>
+                <option value="20">20 sats</option>
+                <option value="50">50 sats</option>
+                <option value="100">100 sats</option>
+              </select>
             </label>
             <label id="word-count-field" class="hidden">
               오늘 외운 단어 수
@@ -146,17 +160,42 @@
             </label>
             <label id="word-rate-field" class="hidden">
               단어당 기부 사토시
-              <input id="word-rate" type="number" min="1" value="5" />
+              <select id="word-rate">
+                <option value="1">1 sats</option>
+                <option value="5" selected>5 sats</option>
+                <option value="10">10 sats</option>
+                <option value="20">20 sats</option>
+                <option value="50">50 sats</option>
+              </select>
             </label>
             <div class="row">
               <span class="pill">오늘 기부 예상: <strong id="sats-total">0 sats</strong></span>
+              <span class="pill">누적 기부: <strong id="sats-total-all">0 sats</strong></span>
             </div>
             <label>
               기부 메모 (선택)
               <input id="donation-note" placeholder="예: 누적 공부 2시간 달성" />
             </label>
+            <div id="blink-address-card" class="blink-address hidden">
+              <span class="blink-label">Blink Lightning 주소</span>
+              <strong id="blink-address">-</strong>
+            </div>
             <button id="donate" class="primary">기부 기록 저장</button>
+            <button id="open-wallet" class="accent">지갑에서 기부하기</button>
+            <button id="share-discord" class="primary">디스코드에 공유 &amp; 사토시 기부</button>
+            <p class="hint" id="share-status">
+              디스코드 공유와 기부 연동은 서버에서 설정해야 합니다.
+            </p>
             <p class="hint" id="donation-status">실제 사토시 전송은 LNURL/지갑 연동이 필요합니다.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>기부 기록</h2>
+          <p class="muted">저장된 기부 기록을 확인할 수 있습니다.</p>
+          <div class="stack">
+            <div id="donation-history" class="history-list"></div>
+            <p id="donation-history-empty" class="hint">아직 저장된 기부 기록이 없습니다.</p>
           </div>
         </div>
       </section>

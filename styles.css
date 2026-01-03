@@ -263,6 +263,41 @@ button.ghost {
   color: #111827;
 }
 
+.history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.history-item {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.history-item strong {
+  color: #111827;
+}
+
+.blink-address {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.blink-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 700;
+}
+
 .locked {
   opacity: 0.6;
   pointer-events: none;
@@ -290,6 +325,10 @@ button.ghost {
   display: none;
 }
 
+#badge {
+  display: none;
+}
+
 .profile {
   border-radius: 14px;
   overflow: hidden;
@@ -314,6 +353,22 @@ button.ghost {
   height: 56px;
   border-radius: 50%;
   background: #e5e7eb;
+}
+
+.login-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #e2e8f0;
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+
+.login-label {
+  font-size: 12px;
+  color: #475569;
 }
 
 .profile-name {

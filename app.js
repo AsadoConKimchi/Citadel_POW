@@ -4,12 +4,14 @@ const totalTodayEl = document.getElementById("total-today");
 const goalProgressEl = document.getElementById("goal-progress");
 const satsRateInput = document.getElementById("sats-rate");
 const satsTotalEl = document.getElementById("sats-total");
+const satsTotalAllEl = document.getElementById("sats-total-all");
 const finishButton = document.getElementById("finish");
 const studyPlanInput = document.getElementById("study-plan");
 const planStatus = document.getElementById("plan-status");
 const shareDiscordButton = document.getElementById("share-discord");
 const shareStatus = document.getElementById("share-status");
 const donationMode = document.getElementById("donation-mode");
+const donationScope = document.getElementById("donation-scope");
 const wordCountField = document.getElementById("word-count-field");
 const wordRateField = document.getElementById("word-rate-field");
 const wordCountInput = document.getElementById("word-count");
@@ -33,6 +35,8 @@ const discordGuild = document.getElementById("discord-guild");
 const allowedServer = document.getElementById("allowed-server");
 const sessionList = document.getElementById("session-list");
 const sessionEmpty = document.getElementById("session-empty");
+const loginUser = document.getElementById("login-user");
+const loginUserName = document.getElementById("login-user-name");
 
 const studyPlanPreview = document.getElementById("study-plan-preview");
 const openCameraButton = document.getElementById("open-camera");
@@ -48,6 +52,11 @@ const downloadLink = document.getElementById("download");
 const donationNote = document.getElementById("donation-note");
 const donateButton = document.getElementById("donate");
 const donationStatus = document.getElementById("donation-status");
+const donationHistory = document.getElementById("donation-history");
+const donationHistoryEmpty = document.getElementById("donation-history-empty");
+const blinkAddressCard = document.getElementById("blink-address-card");
+const blinkAddressEl = document.getElementById("blink-address");
+const openWalletButton = document.getElementById("open-wallet");
 
 let timerInterval = null;
 let elapsedSeconds = 0;
@@ -58,6 +67,7 @@ let photoSource = null;
 const todayKey = new Date().toISOString().slice(0, 10);
 const planKey = `citadel-plan-${todayKey}`;
 const sessionsKey = `citadel-sessions-${todayKey}`;
+const lastSessionKey = `citadel-last-session-${todayKey}`;
 
 const formatTime = (seconds) => {
   const hrs = String(Math.floor(seconds / 3600)).padStart(2, "0");
@@ -152,6 +162,27 @@ const saveSessions = (sessions) => {
   localStorage.setItem(sessionsKey, JSON.stringify(sessions));
 };
 
+const getLastSessionSeconds = () => {
+  try {
+    const raw = localStorage.getItem(lastSessionKey);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed) {
+      return { durationSeconds: 0, goalMinutes: 0, plan: "" };
+    }
+    return {
+      durationSeconds: Number(parsed.durationSeconds || 0),
+      goalMinutes: Number(parsed.goalMinutes || 0),
+      plan: parsed.plan || "",
+    };
+  } catch (error) {
+    return { durationSeconds: 0, goalMinutes: 0, plan: "" };
+  }
+};
+
+const setLastSessionSeconds = (value) => {
+  localStorage.setItem(lastSessionKey, JSON.stringify(value));
+};
+
 const renderSessions = () => {
   if (!sessionList) {
     return;
@@ -207,6 +238,7 @@ const finishSession = () => {
   saveSessions(sessions);
   const total = getStoredTotal() + elapsedSeconds;
   setStoredTotal(total);
+  setLastSessionSeconds({ durationSeconds: elapsedSeconds, goalMinutes, plan });
   elapsedSeconds = 0;
   updateDisplay();
   updateTotals();
@@ -215,7 +247,17 @@ const finishSession = () => {
   setTimeout(() => {
     finishButton.textContent = "공부 종료 & 인증하기";
   }, 2000);
+  if (photoSource) {
+    drawBadge();
+  }
   openCameraButton?.focus();
+};
+
+const getDonationSeconds = () => {
+  if (donationScope?.value === "session") {
+    return getLastSessionSeconds().durationSeconds;
+  }
+  return getStoredTotal();
 };
 
 const updateSats = () => {
@@ -228,14 +270,135 @@ const updateSats = () => {
     return;
   }
   const rate = Number(satsRateInput.value || 0);
-  const totalMinutes = Math.floor(getStoredTotal() / 60);
+  const totalMinutes = Math.floor(getDonationSeconds() / 60);
   const sats = totalMinutes * rate;
   satsTotalEl.textContent = `${sats} sats`;
+};
+
+const getDonationHistory = () =>
+  JSON.parse(localStorage.getItem("citadel-donations") || "[]");
+
+const renderDonationHistory = () => {
+  if (!donationHistory || !donationHistoryEmpty) {
+    return;
+  }
+  const history = getDonationHistory();
+  donationHistory.innerHTML = "";
+  donationHistoryEmpty.style.display = history.length ? "none" : "block";
+  history.slice().reverse().forEach((item) => {
+    const entry = document.createElement("div");
+    entry.className = "history-item";
+    const scopeLabel = item.scope === "session" ? "회차 별" : "누적";
+    const modeLabel = item.mode === "words" ? "공부량" : "공부 시간";
+    entry.innerHTML = `
+      <div><strong>${item.date}</strong> · ${scopeLabel} · ${modeLabel}</div>
+      <div>기부: <strong>${item.sats} sats</strong> · ${item.minutes}분</div>
+      <div>메모: ${item.note || "없음"}</div>
+    `;
+    donationHistory.appendChild(entry);
+  });
+};
+
+const updateDonationTotals = () => {
+  if (!satsTotalAllEl) {
+    return;
+  }
+  const total = getDonationHistory().reduce((sum, item) => sum + (item.sats || 0), 0);
+  satsTotalAllEl.textContent = `${total} sats`;
 };
 
 const initializeTotals = () => {
   updateDisplay();
   updateTotals();
+  updateDonationTotals();
+  renderDonationHistory();
+};
+
+let blinkAddress = "";
+
+const updateBlinkAddress = (address) => {
+  blinkAddress = address;
+  if (!blinkAddressCard || !blinkAddressEl) {
+    return;
+  }
+  if (address) {
+    blinkAddressCard.classList.remove("hidden");
+    blinkAddressEl.textContent = address;
+  } else {
+    blinkAddressCard.classList.add("hidden");
+  }
+};
+
+const openLightningWallet = async () => {
+  if (!blinkAddress) {
+    alert("Blink Lightning 주소가 설정되지 않았습니다.");
+    return;
+  }
+  const sats = Number((satsTotalEl.textContent || "0").replace(/\D/g, "")) || 0;
+  if (sats <= 0) {
+    alert("기부할 사토시 금액을 먼저 확인해주세요.");
+    return;
+  }
+  const dataUrl = getBadgeDataUrl();
+  if (!dataUrl || dataUrl === "data:,") {
+    alert("먼저 인증 카드를 생성해주세요.");
+    return;
+  }
+  const lastSession = getLastSessionSeconds();
+  const donationSeconds = getDonationSeconds();
+  const donationMinutes = Math.floor(donationSeconds / 60);
+  const payload = {
+    dataUrl,
+    plan: lastSession.plan || "학습 목표 미입력",
+    studyTime: formatMinutesSeconds(lastSession.durationSeconds || 0),
+    goalRate: `${
+      lastSession.goalMinutes
+        ? Math.min(
+            100,
+            (lastSession.durationSeconds / 60 / lastSession.goalMinutes) * 100
+          ).toFixed(1)
+        : "0.0"
+    }%`,
+    minutes: donationMinutes,
+    sats,
+    donationMode: donationMode?.value || "time",
+    donationScope: donationScope?.value || "total",
+    wordCount: Number(wordCountInput?.value || 0),
+    donationNote: donationNote?.value?.trim() || "",
+    username: loginUserName?.textContent || "",
+  };
+  try {
+    const response = await fetch("/api/donation-invoice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      let errorMessage = "";
+      try {
+        const parsed = await response.clone().json();
+        errorMessage = parsed?.message || "";
+      } catch (error) {
+        errorMessage = await response.text();
+      }
+      throw new Error(errorMessage || "인보이스 생성에 실패했습니다.");
+    }
+    const result = await response.json();
+    if (!result?.invoice) {
+      throw new Error("인보이스 응답이 비어 있습니다.");
+    }
+    if (shareStatus) {
+      shareStatus.textContent =
+        "지갑 앱을 열었습니다. 결제 완료 시 디스코드에 자동 공유됩니다.";
+    }
+    window.location.href = `lightning:${result.invoice}`;
+  } catch (error) {
+    if (shareStatus) {
+      shareStatus.textContent = error?.message
+        ? `인보이스 생성 실패: ${error.message}`
+        : "인보이스 생성에 실패했습니다.";
+    }
+  }
 };
 
 const loadStudyPlan = () => {
@@ -279,6 +442,11 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
     mainContent.classList.add("locked");
     discordLogout.style.display = "none";
     discordProfile.style.display = "none";
+    if (loginUser) {
+      loginUser.classList.add("hidden");
+    }
+    discordAppLogin.style.display = "inline-flex";
+    discordWebLogin.style.display = "inline-flex";
     if (allowedServer) {
       allowedServer.textContent = "접속 가능 서버: 확인 실패";
     }
@@ -291,6 +459,11 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
     mainContent.classList.add("locked");
     discordLogout.style.display = "none";
     discordProfile.style.display = "none";
+    if (loginUser) {
+      loginUser.classList.add("hidden");
+    }
+    discordAppLogin.style.display = "inline-flex";
+    discordWebLogin.style.display = "inline-flex";
     if (allowedServer) {
       allowedServer.textContent = "접속 가능 서버: 로그인 필요";
     }
@@ -303,9 +476,17 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
     mainContent.classList.add("locked");
     discordLogout.style.display = "inline-flex";
     discordProfile.style.display = "none";
+    if (loginUser) {
+      loginUser.classList.remove("hidden");
+    }
+    discordAppLogin.style.display = "none";
+    discordWebLogin.style.display = "none";
     if (allowedServer) {
       const guildName = guild?.name ?? "citadel.sx";
       allowedServer.textContent = `접속 가능 서버: ${guildName}`;
+    }
+    if (user && loginUserName) {
+      loginUserName.textContent = user.username ?? "-";
     }
     return;
   }
@@ -315,6 +496,11 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
   mainContent.classList.remove("locked");
   discordLogout.style.display = "inline-flex";
   discordProfile.style.display = "block";
+  if (loginUser) {
+    loginUser.classList.remove("hidden");
+  }
+  discordAppLogin.style.display = "none";
+  discordWebLogin.style.display = "none";
   if (user) {
     const avatarUrl = user.avatar
       ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
@@ -326,6 +512,9 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
     discordBanner.style.backgroundImage = bannerUrl ? `url(${bannerUrl})` : "";
     discordBanner.style.backgroundSize = "cover";
     discordUsername.textContent = user.username;
+    if (loginUserName) {
+      loginUserName.textContent = user.username;
+    }
   }
   if (guild?.name) {
     discordGuild.textContent = `서버: ${guild.name}`;
@@ -365,6 +554,7 @@ if (donationMode) {
     updateSats();
   });
 }
+donationScope?.addEventListener("change", updateSats);
 wordCountInput?.addEventListener("input", updateSats);
 wordRateInput?.addEventListener("input", updateSats);
 if (studyPlanInput) {
@@ -389,6 +579,7 @@ openCameraButton.addEventListener("click", async () => {
     cameraVideo.style.display = "block";
     snapshotCanvas.style.display = "none";
     photoPreview.style.display = "none";
+    badgeCanvas.style.display = "none";
   } catch (error) {
     alert("카메라를 열 수 없습니다. 권한을 확인해주세요.");
   }
@@ -404,6 +595,7 @@ captureButton.addEventListener("click", () => {
   snapshotCanvas.style.display = "block";
   cameraVideo.style.display = "none";
   photoPreview.style.display = "none";
+  badgeCanvas.style.display = "none";
   photoSource = snapshotCanvas;
   stopCamera();
 });
@@ -418,6 +610,7 @@ photoUpload.addEventListener("change", (event) => {
   photoPreview.style.display = "block";
   snapshotCanvas.style.display = "none";
   cameraVideo.style.display = "none";
+  badgeCanvas.style.display = "none";
   photoSource = photoPreview;
 });
 
@@ -439,24 +632,32 @@ const drawBadge = () => {
     context.drawImage(photoSource, x, y, width, height);
   }
 
+  const lastSession = getLastSessionSeconds();
+  const lastGoalRate = lastSession.goalMinutes
+    ? Math.min(100, (lastSession.durationSeconds / 60 / lastSession.goalMinutes) * 100)
+    : 0;
+  const overlayHeight = 340;
+
   context.fillStyle = "rgba(15, 23, 42, 0.65)";
-  context.fillRect(0, badgeCanvas.height - 280, badgeCanvas.width, 280);
+  context.fillRect(0, badgeCanvas.height - overlayHeight, badgeCanvas.width, overlayHeight);
 
   context.fillStyle = "#f8fafc";
   context.font = "bold 52px sans-serif";
-  context.fillText("오늘의 공부 인증", 60, badgeCanvas.height - 200);
+  context.fillText("오늘의 공부 인증", 60, badgeCanvas.height - overlayHeight + 90);
 
   context.font = "bold 36px sans-serif";
-  const plan = getPlanValue() || "학습 목표 미입력";
-  context.fillText(`학습목표: ${plan}`, 60, badgeCanvas.height - 140);
+  const plan = lastSession.plan || "학습 목표 미입력";
+  context.fillText(`학습목표: ${plan}`, 60, badgeCanvas.height - overlayHeight + 150);
 
   context.font = "28px sans-serif";
-  const totalSeconds = getStoredTotal();
-  const studyTimeLabel = formatMinutesSeconds(totalSeconds);
-  context.fillText(`Study Time: ${studyTimeLabel}`, 60, badgeCanvas.height - 90);
+  const studyTimeLabel = formatMinutesSeconds(lastSession.durationSeconds || 0);
+  context.fillText(`Study Time: ${studyTimeLabel}`, 60, badgeCanvas.height - overlayHeight + 205);
 
-  const goalRate = getGoalProgress(totalSeconds).toFixed(1);
-  context.fillText(`Goal Rate: ${goalRate}%`, 60, badgeCanvas.height - 48);
+  context.fillText(
+    `Goal Rate: ${lastGoalRate.toFixed(1)}%`,
+    60,
+    badgeCanvas.height - overlayHeight + 245
+  );
 
   context.font = "24px sans-serif";
   const date = new Date().toLocaleDateString("ko-KR", {
@@ -464,35 +665,59 @@ const drawBadge = () => {
     month: "long",
     day: "numeric",
   });
-  context.fillText(date, badgeCanvas.width - 300, badgeCanvas.height - 48);
+  context.fillText(date, badgeCanvas.width - 300, badgeCanvas.height - 36);
 
   const dataUrl = badgeCanvas.toDataURL("image/png");
   downloadLink.href = dataUrl;
   downloadLink.style.display = "inline-flex";
+  badgeCanvas.style.display = "block";
+  snapshotCanvas.style.display = "none";
+  cameraVideo.style.display = "none";
+  photoPreview.style.display = "none";
   if (shareStatus) {
     shareStatus.textContent = "디스코드 공유와 기부 연동은 서버에서 설정해야 합니다.";
   }
+};
+
+const getBadgeDataUrl = () => {
+  const rawDataUrl = badgeCanvas.toDataURL("image/png");
+  if (!rawDataUrl || rawDataUrl === "data:,") {
+    return rawDataUrl;
+  }
+  const maxSize = 720;
+  const scaled = document.createElement("canvas");
+  const scale = Math.min(maxSize / badgeCanvas.width, maxSize / badgeCanvas.height);
+  scaled.width = Math.round(badgeCanvas.width * scale);
+  scaled.height = Math.round(badgeCanvas.height * scale);
+  const context = scaled.getContext("2d");
+  context.drawImage(badgeCanvas, 0, 0, scaled.width, scaled.height);
+  return scaled.toDataURL("image/png", 0.92);
 };
 
 const shareToDiscord = async () => {
   if (!badgeCanvas) {
     return;
   }
-  const dataUrl = badgeCanvas.toDataURL("image/png");
+  const dataUrl = getBadgeDataUrl();
   if (!dataUrl || dataUrl === "data:,") {
     alert("먼저 인증 카드를 생성해주세요.");
     return;
   }
+  const lastSession = getLastSessionSeconds();
   const totalSeconds = getStoredTotal();
+  const donationSeconds = getDonationSeconds();
+  const donationMinutes = Math.floor(donationSeconds / 60);
   const payload = {
     dataUrl,
-    plan: getPlanValue() || "학습 목표 미입력",
-    studyTime: formatMinutesSeconds(totalSeconds),
-    goalRate: `${getGoalProgress(totalSeconds).toFixed(1)}%`,
-    minutes: Math.floor(totalSeconds / 60),
+    plan: lastSession.plan || "학습 목표 미입력",
+    studyTime: formatMinutesSeconds(lastSession.durationSeconds || 0),
+    goalRate: `${lastSession.goalMinutes ? Math.min(100, (lastSession.durationSeconds / 60 / lastSession.goalMinutes) * 100).toFixed(1) : "0.0"}%`,
+    minutes: donationMinutes,
     sats: Number((satsTotalEl.textContent || "0").replace(/\D/g, "")) || 0,
     donationMode: donationMode?.value || "time",
+    donationScope: donationScope?.value || "total",
     wordCount: Number(wordCountInput?.value || 0),
+    donationNote: donationNote?.value?.trim() || "",
   };
   try {
     const response = await fetch("/api/share", {
@@ -501,8 +726,14 @@ const shareToDiscord = async () => {
       body: JSON.stringify(payload),
     });
     if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || "공유에 실패했습니다.");
+      let errorMessage = "";
+      try {
+        const parsed = await response.clone().json();
+        errorMessage = parsed?.message || "";
+      } catch (parseError) {
+        errorMessage = await response.text();
+      }
+      throw new Error(errorMessage || "공유에 실패했습니다.");
     }
     const result = await response.json();
     if (shareStatus) {
@@ -510,7 +741,9 @@ const shareToDiscord = async () => {
     }
   } catch (error) {
     if (shareStatus) {
-      shareStatus.textContent = "공유에 실패했습니다. 서버 설정을 확인해주세요.";
+      shareStatus.textContent = error?.message
+        ? `공유에 실패했습니다. ${error.message}`
+        : "공유에 실패했습니다. 서버 설정을 확인해주세요.";
     }
   }
 };
@@ -526,9 +759,10 @@ generateButton.addEventListener("click", () => {
 if (shareDiscordButton) {
   shareDiscordButton.addEventListener("click", shareToDiscord);
 }
+openWalletButton?.addEventListener("click", openLightningWallet);
 
 donateButton.addEventListener("click", () => {
-  const totalMinutes = Math.floor(getStoredTotal() / 60);
+  const totalMinutes = Math.floor(getDonationSeconds() / 60);
   const mode = donationMode?.value || "time";
   const sats =
     mode === "words"
@@ -541,11 +775,14 @@ donateButton.addEventListener("click", () => {
     sats,
     minutes: totalMinutes,
     mode,
+    scope: donationScope?.value || "total",
     words: Number(wordCountInput?.value || 0),
     note,
   });
   localStorage.setItem("citadel-donations", JSON.stringify(history));
   donationStatus.textContent = `오늘 ${sats} sats 기부 기록을 저장했습니다.`;
+  updateDonationTotals();
+  renderDonationHistory();
 });
 
 window.addEventListener("beforeunload", () => {
@@ -575,4 +812,18 @@ const loadSession = async () => {
   }
 };
 
+const loadConfig = async () => {
+  try {
+    const response = await fetch("/api/config");
+    if (!response.ok) {
+      return;
+    }
+    const data = await response.json();
+    updateBlinkAddress(data?.blinkAddress || "");
+  } catch (error) {
+    updateBlinkAddress("");
+  }
+};
+
 loadSession();
+loadConfig();
