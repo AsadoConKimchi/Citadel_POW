@@ -176,7 +176,12 @@
               기부 메모 (선택)
               <input id="donation-note" placeholder="예: 누적 공부 2시간 달성" />
             </label>
+            <div id="blink-address-card" class="blink-address hidden">
+              <span class="blink-label">Blink Lightning 주소</span>
+              <strong id="blink-address">-</strong>
+            </div>
             <button id="donate" class="primary">기부 기록 저장</button>
+            <button id="open-wallet" class="accent">지갑에서 기부하기</button>
             <button id="share-discord" class="primary">디스코드에 공유 &amp; 사토시 기부</button>
             <p class="hint" id="share-status">
               디스코드 공유와 기부 연동은 서버에서 설정해야 합니다.
