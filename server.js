@@ -274,22 +274,26 @@ app.post("/api/share", async (req, res) => {
       if (BLINK_API_KEY) {
         blinkHeaders.Authorization = `Bearer ${BLINK_API_KEY}`;
       }
-      await fetch(BLINK_WEBHOOK_URL, {
-        method: "POST",
-        headers: blinkHeaders,
-        body: JSON.stringify({
-          minutes,
-          sats,
-          plan: planLabel,
-          studyTime: studyTimeLabel,
-          goalRate: goalRateLabel,
-          donationMode,
-          wordCount,
-        }),
-      });
+      try {
+        await fetch(BLINK_WEBHOOK_URL, {
+          method: "POST",
+          headers: blinkHeaders,
+          body: JSON.stringify({
+            minutes,
+            sats,
+            plan: planLabel,
+            studyTime: studyTimeLabel,
+            goalRate: goalRateLabel,
+            donationMode,
+            wordCount,
+          }),
+        });
+      } catch (blinkError) {
+        console.warn("Blink webhook failed", blinkError);
+      }
     }
 
-    res.json({ message: "디스코드 공유와 기부 요청을 완료했습니다." });
+    res.json({ message: "디스코드 공유를 완료했습니다." });
   } catch (error) {
     res.status(500).json({ message: "디스코드 공유에 실패했습니다." });
   }

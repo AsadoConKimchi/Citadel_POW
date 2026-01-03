@@ -109,18 +109,14 @@
               <video id="camera" autoplay playsinline></video>
               <canvas id="snapshot" width="640" height="480"></canvas>
               <img id="photo-preview" alt="업로드 미리보기" />
+              <canvas id="badge" width="1080" height="1080"></canvas>
             </div>
             <div class="row">
               <button id="capture">촬영하기</button>
               <button id="generate" class="primary">인증 카드 생성</button>
             </div>
             <div class="result">
-              <canvas id="badge" width="1080" height="1080"></canvas>
               <a id="download" class="accent" download="citadel_idioma_badge.png">이미지 저장</a>
-              <button id="share-discord" class="primary">디스코드에 공유 &amp; 사토시 기부</button>
-              <p class="hint" id="share-status">
-                디스코드 공유와 기부 연동은 서버에서 설정해야 합니다.
-              </p>
             </div>
           </div>
         </div>
@@ -156,6 +152,10 @@
               <input id="donation-note" placeholder="예: 누적 공부 2시간 달성" />
             </label>
             <button id="donate" class="primary">기부 기록 저장</button>
+            <button id="share-discord" class="primary">디스코드에 공유 &amp; 사토시 기부</button>
+            <p class="hint" id="share-status">
+              디스코드 공유와 기부 연동은 서버에서 설정해야 합니다.
+            </p>
             <p class="hint" id="donation-status">실제 사토시 전송은 LNURL/지갑 연동이 필요합니다.</p>
           </div>
         </div>

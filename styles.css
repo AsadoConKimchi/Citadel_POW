@@ -290,6 +290,10 @@ button.ghost {
   display: none;
 }
 
+#badge {
+  display: none;
+}
+
 .profile {
   border-radius: 14px;
   overflow: hidden;
