@@ -74,6 +74,19 @@ const parseLightningAddress = (address) => {
   return { name, domain };
 };
 
+const normalizeInvoice = (invoice) => {
+  if (!invoice) {
+    return "";
+  }
+  const trimmed = String(invoice).trim();
+  if (!trimmed) {
+    return "";
+  }
+  return trimmed.toLowerCase().startsWith("lightning:")
+    ? trimmed.slice("lightning:".length).trim()
+    : trimmed;
+};
+
 const isBolt11Invoice = (invoice) =>
   Boolean(invoice) && /^ln(bc|tb|tbs|bcrt)[0-9a-z]+$/i.test(invoice.trim());
 
@@ -354,11 +367,17 @@ app.post("/api/donation-invoice", async (req, res) => {
       return;
     }
     const invoiceData = await invoiceResponse.json();
-    const invoice = invoiceData?.pr || invoiceData?.paymentRequest;
+    if (invoiceData?.status === "ERROR") {
+      res.status(502).json({
+        message: invoiceData?.reason || "LNURL 콜백에서 오류가 반환되었습니다.",
+      });
+      return;
+    }
+    const invoice = normalizeInvoice(invoiceData?.pr || invoiceData?.paymentRequest);
     if (!invoice || !isBolt11Invoice(invoice)) {
-      res
-        .status(502)
-        .json({ message: "BOLT11 인보이스 생성에 실패했습니다. LNURL 응답을 확인해주세요." });
+      res.status(502).json({
+        message: "BOLT11 인보이스 생성에 실패했습니다. LNURL 응답을 확인해주세요.",
+      });
       return;
     }
 

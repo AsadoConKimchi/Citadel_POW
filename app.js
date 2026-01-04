@@ -56,6 +56,7 @@ const donationHistory = document.getElementById("donation-history");
 const donationHistoryEmpty = document.getElementById("donation-history-empty");
 const walletModal = document.getElementById("wallet-modal");
 const walletModalClose = document.getElementById("wallet-modal-close");
+const walletStatus = document.getElementById("wallet-status");
 const walletOptions = document.querySelectorAll(".wallet-option");
 
 let timerInterval = null;
@@ -325,6 +326,9 @@ const openLightningWallet = async () => {
     alert("먼저 인증 카드를 생성해주세요.");
     return;
   }
+  openWalletSelection({
+    message: "인보이스를 생성하는 중입니다. 잠시만 기다려주세요.",
+  });
   const lastSession = getLastSessionSeconds();
   const donationSeconds = getDonationSeconds();
   const donationMinutes = Math.floor(donationSeconds / 60);
@@ -372,13 +376,21 @@ const openLightningWallet = async () => {
       shareStatus.textContent =
         "지갑 앱을 열었습니다. 결제 완료 시 디스코드에 자동 공유됩니다.";
     }
-    openWalletSelection(result.invoice);
+    openWalletSelection({
+      invoice: result.invoice,
+      message: "원하는 지갑을 선택하면 결제가 이어집니다.",
+    });
   } catch (error) {
     if (shareStatus) {
       shareStatus.textContent = error?.message
         ? `인보이스 생성 실패: ${error.message}`
         : "인보이스 생성에 실패했습니다.";
     }
+    if (walletStatus) {
+      walletStatus.textContent =
+        error?.message?.trim() || "인보이스 생성에 실패했습니다.";
+    }
+    setWalletOptionsEnabled(false);
   }
 };
 
@@ -390,14 +402,27 @@ const walletDeepLinks = {
   strike: (invoice) => `strike://pay?invoice=${encodeURIComponent(invoice)}`,
 };
 
-const openWalletSelection = (invoice) => {
+const setWalletOptionsEnabled = (enabled) => {
+  walletOptions.forEach((option) => {
+    option.disabled = !enabled;
+  });
+};
+
+const openWalletSelection = ({ invoice, message } = {}) => {
   if (!walletModal) {
-    window.location.href = `lightning:${invoice}`;
+    if (invoice) {
+      window.location.href = `lightning:${invoice}`;
+    }
     return;
   }
-  walletModal.dataset.invoice = invoice;
+  walletModal.dataset.invoice = invoice || "";
   walletModal.classList.remove("hidden");
   walletModal.setAttribute("aria-hidden", "false");
+  if (walletStatus) {
+    walletStatus.textContent =
+      message || "선택한 지갑으로 인보이스를 전달합니다.";
+  }
+  setWalletOptionsEnabled(Boolean(invoice));
 };
 
 const closeWalletSelection = () => {
@@ -407,6 +432,10 @@ const closeWalletSelection = () => {
   walletModal.classList.add("hidden");
   walletModal.setAttribute("aria-hidden", "true");
   walletModal.dataset.invoice = "";
+  if (walletStatus) {
+    walletStatus.textContent = "선택한 지갑으로 인보이스를 전달합니다.";
+  }
+  setWalletOptionsEnabled(true);
 };
 
 const launchWallet = (walletKey) => {

@@ -482,6 +482,12 @@ footer {
   background: #1e293b;
 }
 
+.wallet-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background: #334155;
+}
+
 @media (max-width: 640px) {
   header.hero {
     padding: 40px 6vw 28px;
