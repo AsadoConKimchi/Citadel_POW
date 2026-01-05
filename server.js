@@ -50,6 +50,7 @@ app.use(
 app.use(express.static(__dirname));
 
 const pendingDonations = new Map();
+const pendingDonationsByInvoice = new Map();
 
 const createDonationId = () => crypto.randomUUID();
 
@@ -89,6 +90,26 @@ const normalizeInvoice = (invoice) => {
 
 const isBolt11Invoice = (invoice) =>
   Boolean(invoice) && /^ln(bc|tb|tbs|bcrt)[0-9a-z]+$/i.test(invoice.trim());
+
+const resolveInvoiceCandidate = (candidate) => {
+  if (!candidate) {
+    return "";
+  }
+  if (typeof candidate === "string") {
+    return normalizeInvoice(candidate);
+  }
+  if (typeof candidate === "object") {
+    return normalizeInvoice(
+      candidate.paymentRequest ||
+        candidate.payment_request ||
+        candidate.pr ||
+        candidate.invoice ||
+        candidate.lnInvoice ||
+        candidate.ln_invoice
+    );
+  }
+  return "";
+};
 
 const sendDiscordShare = async ({ dataUrl, plan, studyTime, goalRate, minutes, sats, donationMode, wordCount, username, donationNote }) => {
   if (!DISCORD_WEBHOOK_URL) {
@@ -342,18 +363,14 @@ app.post("/api/donation-invoice", async (req, res) => {
       return;
     }
     const commentAllowed = Number(lnurlData?.commentAllowed || 0);
-    if (!commentAllowed && donationNote?.trim()) {
-      res.status(400).json({
-        message: "해당 LNURL 주소는 메모를 지원하지 않습니다. 메모를 비워주세요.",
-      });
-      return;
-    }
-    const comment = buildDonationComment(
-      donationNote,
-      donationId,
-      commentAllowed,
-      effectiveBlinkAddress
-    );
+    const comment = commentAllowed
+      ? buildDonationComment(
+          donationNote,
+          donationId,
+          commentAllowed,
+          effectiveBlinkAddress
+        )
+      : "";
     const callbackUrl = new URL(callback);
     callbackUrl.searchParams.set("amount", String(amountMsats));
     if (commentAllowed) {
@@ -394,8 +411,12 @@ app.post("/api/donation-invoice", async (req, res) => {
       donationNote,
       username,
     });
+    pendingDonationsByInvoice.set(invoice, donationId);
 
-    setTimeout(() => pendingDonations.delete(donationId), 1000 * 60 * 30);
+    setTimeout(() => {
+      pendingDonations.delete(donationId);
+      pendingDonationsByInvoice.delete(invoice);
+    }, 1000 * 60 * 30);
 
     res.json({ invoice, donationId });
   } catch (error) {
@@ -406,17 +427,33 @@ app.post("/api/donation-invoice", async (req, res) => {
 app.post("/api/blink/webhook", async (req, res) => {
   try {
     const eventType = req.body?.eventType;
-    const memo = req.body?.transaction?.memo || "";
+    const transaction = req.body?.transaction || {};
+    const memo = transaction.memo || "";
     if (!memo || !eventType || !eventType.startsWith("receive")) {
-      res.status(204).end();
-      return;
+      if (!eventType || !eventType.startsWith("receive")) {
+        res.status(204).end();
+        return;
+      }
     }
     const match = memo.match(/donation:([a-f0-9-]+)/i);
-    if (!match) {
+    let donationId = match ? match[1] : "";
+    if (!donationId) {
+      const invoiceCandidate = resolveInvoiceCandidate(
+        transaction.paymentRequest ||
+          transaction.payment_request ||
+          transaction.invoice ||
+          transaction.lnInvoice ||
+          transaction.ln_invoice ||
+          transaction
+      );
+      if (invoiceCandidate) {
+        donationId = pendingDonationsByInvoice.get(invoiceCandidate) || "";
+      }
+    }
+    if (!donationId) {
       res.status(204).end();
       return;
     }
-    const donationId = match[1];
     const payload = pendingDonations.get(donationId);
     if (!payload) {
       res.status(204).end();
@@ -424,6 +461,16 @@ app.post("/api/blink/webhook", async (req, res) => {
     }
     await sendDiscordShare(payload);
     pendingDonations.delete(donationId);
+    pendingDonationsByInvoice.delete(
+      resolveInvoiceCandidate(
+        transaction.paymentRequest ||
+          transaction.payment_request ||
+          transaction.invoice ||
+          transaction.lnInvoice ||
+          transaction.ln_invoice ||
+          transaction
+      )
+    );
     res.status(200).end();
   } catch (error) {
     res.status(200).end();
