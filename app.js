@@ -104,6 +104,19 @@ const setStoredTotal = (value) => {
   localStorage.setItem(`citadel-total-${todayKey}`, String(value));
 };
 
+const normalizeInvoice = (invoice) => {
+  if (!invoice) {
+    return "";
+  }
+  const trimmed = String(invoice).trim();
+  if (!trimmed) {
+    return "";
+  }
+  return trimmed.toLowerCase().startsWith("lightning:")
+    ? trimmed.slice("lightning:".length).trim()
+    : trimmed;
+};
+
 const updateTotals = () => {
   if (!totalTodayEl || !goalProgressEl) {
     return;
@@ -533,12 +546,16 @@ const openLightningWallet = async () => {
     if (!result?.invoice) {
       throw new Error("인보이스 응답이 비어 있습니다.");
     }
+    const normalizedInvoice = normalizeInvoice(result.invoice);
+    if (!normalizedInvoice) {
+      throw new Error("인보이스 형식이 올바르지 않습니다.");
+    }
     if (shareStatus) {
       shareStatus.textContent =
         "지갑 앱을 열었습니다. 결제 완료 시 디스코드에 자동 공유됩니다.";
     }
     openWalletSelection({
-      invoice: result.invoice,
+      invoice: normalizedInvoice,
       message: "원하는 지갑을 선택하면 결제가 이어집니다.",
     });
   } catch (error) {
@@ -561,6 +578,7 @@ const walletDeepLinks = {
   speed: (invoice) => `speed://pay?invoice=${encodeURIComponent(invoice)}`,
   blink: (invoice) => `lightning:${invoice}`,
   strike: (invoice) => `strike://pay?invoice=${encodeURIComponent(invoice)}`,
+  zeus: (invoice) => `zeus://pay?invoice=${encodeURIComponent(invoice)}`,
 };
 
 const setWalletOptionsEnabled = (enabled) => {
@@ -572,11 +590,14 @@ const setWalletOptionsEnabled = (enabled) => {
 const openWalletSelection = ({ invoice, message } = {}) => {
   if (!walletModal) {
     if (invoice) {
-      window.location.href = `lightning:${invoice}`;
+      const normalizedInvoice = normalizeInvoice(invoice);
+      if (normalizedInvoice) {
+        window.location.href = `lightning:${normalizedInvoice}`;
+      }
     }
     return;
   }
-  walletModal.dataset.invoice = invoice || "";
+  walletModal.dataset.invoice = normalizeInvoice(invoice) || "";
   walletModal.classList.remove("hidden");
   walletModal.setAttribute("aria-hidden", "false");
   if (walletStatus) {
