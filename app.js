@@ -398,7 +398,7 @@ const walletDeepLinks = {
   walletofsatoshi: (invoice) =>
     `walletofsatoshi://pay?invoice=${encodeURIComponent(invoice)}`,
   speed: (invoice) => `speed://pay?invoice=${encodeURIComponent(invoice)}`,
-  blink: (invoice) => `blink://pay?invoice=${encodeURIComponent(invoice)}`,
+  blink: (invoice) => `lightning:${invoice}`,
   strike: (invoice) => `strike://pay?invoice=${encodeURIComponent(invoice)}`,
 };
 
