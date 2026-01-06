@@ -59,6 +59,10 @@ const walletModal = document.getElementById("wallet-modal");
 const walletModalClose = document.getElementById("wallet-modal-close");
 const walletStatus = document.getElementById("wallet-status");
 const walletOptions = document.querySelectorAll(".wallet-option");
+const walletInvoice = document.getElementById("wallet-invoice");
+const walletInvoiceText = document.getElementById("wallet-invoice-text");
+const walletInvoiceCopy = document.getElementById("wallet-invoice-copy");
+const walletInvoiceQr = document.getElementById("wallet-invoice-qr");
 
 let timerInterval = null;
 let elapsedSeconds = 0;
@@ -116,6 +120,8 @@ const normalizeInvoice = (invoice) => {
     ? trimmed.slice("lightning:".length).trim()
     : trimmed;
 };
+
+const getLightningUri = (invoice) => `lightning:${normalizeInvoice(invoice)}`;
 
 const updateTotals = () => {
   if (!totalTodayEl || !goalProgressEl) {
@@ -393,7 +399,7 @@ const renderDonationHistory = () => {
   if (!donationHistory || !donationHistoryEmpty) {
     return;
   }
-  const history = getDonationHistory();
+  const history = getDonationHistory().filter((item) => item.date === todayKey);
   donationHistory.innerHTML = "";
   donationHistoryEmpty.style.display = history.length ? "none" : "block";
   history.slice().reverse().forEach((item) => {
@@ -453,23 +459,39 @@ const renderDonationHistoryPage = () => {
     monthSelect.appendChild(option);
   });
   const renderForMonth = (monthKey) => {
-    const history = getDonationHistory().filter((entry) =>
-      entry.date?.startsWith(monthKey)
-    );
+    const history = getDonationHistory()
+      .filter((entry) => entry.date?.startsWith(monthKey))
+      .sort((a, b) => (a.date > b.date ? -1 : 1));
     listEl.innerHTML = "";
     emptyEl.style.display = history.length ? "none" : "block";
-    history.slice().reverse().forEach((item) => {
-      const entry = document.createElement("div");
-      entry.className = "history-item";
-      const scopeLabel = item.scope === "session" ? "회차 별" : "누적";
-      const modeLabel = item.mode === "words" ? "공부량" : "공부 시간";
-      entry.innerHTML = `
-        <div><strong>${item.date}</strong> · ${scopeLabel} · ${modeLabel}</div>
-        <div>기부: <strong>${item.sats} sats</strong> · ${item.minutes}분</div>
-        <div>메모: ${item.note || "없음"}</div>
-      `;
-      listEl.appendChild(entry);
-    });
+    const grouped = history.reduce((acc, entry) => {
+      if (!acc[entry.date]) {
+        acc[entry.date] = [];
+      }
+      acc[entry.date].push(entry);
+      return acc;
+    }, {});
+    Object.keys(grouped)
+      .sort()
+      .reverse()
+      .forEach((date) => {
+        const dayBlock = document.createElement("div");
+        dayBlock.className = "history-day";
+        dayBlock.innerHTML = `<p class="history-day__title">${date}</p>`;
+        grouped[date].forEach((item) => {
+          const entry = document.createElement("div");
+          entry.className = "history-item";
+          const scopeLabel = item.scope === "session" ? "회차 별" : "누적";
+          const modeLabel = item.mode === "words" ? "공부량" : "공부 시간";
+          entry.innerHTML = `
+            <div>${scopeLabel} · ${modeLabel}</div>
+            <div>기부: <strong>${item.sats} sats</strong> · ${item.minutes}분</div>
+            <div>메모: ${item.note || "없음"}</div>
+          `;
+          dayBlock.appendChild(entry);
+        });
+        listEl.appendChild(dayBlock);
+      });
     if (currentLabel) {
       currentLabel.textContent = monthKey;
     }
@@ -574,10 +596,10 @@ const openLightningWallet = async () => {
 
 const walletDeepLinks = {
   walletofsatoshi: (invoice) =>
-    `walletofsatoshi://pay?invoice=${encodeURIComponent(invoice)}`,
+    `walletofsatoshi://pay?invoice=${encodeURIComponent(getLightningUri(invoice))}`,
   speed: (invoice) => `speed://pay?invoice=${encodeURIComponent(invoice)}`,
   blink: (invoice) => `lightning:${invoice}`,
-  strike: (invoice) => `strike://pay?invoice=${encodeURIComponent(invoice)}`,
+  strike: (invoice) => `strike://pay?invoice=${encodeURIComponent(getLightningUri(invoice))}`,
   zeus: (invoice) => `zeus://pay?invoice=${encodeURIComponent(invoice)}`,
 };
 
@@ -585,6 +607,29 @@ const setWalletOptionsEnabled = (enabled) => {
   walletOptions.forEach((option) => {
     option.disabled = !enabled;
   });
+  if (walletInvoiceCopy) {
+    walletInvoiceCopy.disabled = !enabled;
+  }
+};
+
+const renderWalletInvoice = (invoice) => {
+  if (!walletInvoice || !walletInvoiceText || !walletInvoiceQr) {
+    return;
+  }
+  const normalizedInvoice = normalizeInvoice(invoice);
+  if (!normalizedInvoice) {
+    walletInvoice.classList.add("hidden");
+    walletInvoiceText.value = "";
+    walletInvoiceQr.src = "";
+    return;
+  }
+  walletInvoice.classList.remove("hidden");
+  walletInvoiceText.value = normalizedInvoice;
+  const lightningUri = getLightningUri(normalizedInvoice);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
+    lightningUri
+  )}`;
+  walletInvoiceQr.src = qrUrl;
 };
 
 const openWalletSelection = ({ invoice, message } = {}) => {
@@ -592,7 +637,7 @@ const openWalletSelection = ({ invoice, message } = {}) => {
     if (invoice) {
       const normalizedInvoice = normalizeInvoice(invoice);
       if (normalizedInvoice) {
-        window.location.href = `lightning:${normalizedInvoice}`;
+        window.location.href = getLightningUri(normalizedInvoice);
       }
     }
     return;
@@ -604,6 +649,7 @@ const openWalletSelection = ({ invoice, message } = {}) => {
     walletStatus.textContent =
       message || "선택한 지갑으로 인보이스를 전달합니다.";
   }
+  renderWalletInvoice(invoice);
   setWalletOptionsEnabled(Boolean(invoice));
 };
 
@@ -617,6 +663,7 @@ const closeWalletSelection = () => {
   if (walletStatus) {
     walletStatus.textContent = "선택한 지갑으로 인보이스를 전달합니다.";
   }
+  renderWalletInvoice("");
   setWalletOptionsEnabled(true);
 };
 
@@ -1021,6 +1068,23 @@ walletOptions.forEach((option) => {
       launchWallet(walletKey);
     }
   });
+});
+
+walletInvoiceCopy?.addEventListener("click", async () => {
+  const invoice = walletInvoiceText?.value || "";
+  if (!invoice) {
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(invoice);
+    if (walletStatus) {
+      walletStatus.textContent = "인보이스를 복사했습니다.";
+    }
+  } catch (error) {
+    if (walletStatus) {
+      walletStatus.textContent = "인보이스 복사에 실패했습니다.";
+    }
+  }
 });
 
 const loadSession = async ({ ignoreUrlFlag = false } = {}) => {

@@ -215,6 +215,16 @@
           </button>
         </div>
         <div class="wallet-modal__body">
+          <div class="wallet-invoice hidden" id="wallet-invoice">
+            <p class="wallet-invoice__label">인보이스</p>
+            <div class="wallet-invoice__content">
+              <img id="wallet-invoice-qr" alt="Lightning invoice QR code" />
+              <div class="wallet-invoice__field">
+                <textarea id="wallet-invoice-text" readonly rows="2"></textarea>
+                <button class="ghost" id="wallet-invoice-copy">인보이스 복사</button>
+              </div>
+            </div>
+          </div>
           <button class="wallet-option" data-wallet="walletofsatoshi">Wallet of Satoshi</button>
           <button class="wallet-option" data-wallet="speed">Speed</button>
           <button class="wallet-option" data-wallet="blink">Blink</button>
