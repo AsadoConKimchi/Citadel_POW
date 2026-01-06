@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Citadel Idioma · 기부 기록</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <nav class="site-nav">
+      <a href="index.html">오늘</a>
+      <a href="study-history.html">공부 기록</a>
+      <a href="donation-history.html" class="active">기부 기록</a>
+    </nav>
+
+    <header class="hero compact">
+      <div>
+        <p class="eyebrow">Citadel Idioma</p>
+        <h1>월별 기부 기록 보기</h1>
+        <p class="subtitle">스크롤로 월을 선택해 해당 월의 기부 기록을 확인하세요.</p>
+      </div>
+    </header>
+
+    <main>
+      <section class="grid single">
+        <div class="card">
+          <h2>기부 기록</h2>
+          <div class="stack">
+            <label>
+              월 선택
+              <select id="donation-month-select" class="scroll-select" size="6"></select>
+            </label>
+            <p class="hint">
+              선택한 월: <strong id="donation-history-month">-</strong>
+            </p>
+            <div id="donation-history-list" class="history-list"></div>
+            <p id="donation-history-empty-page" class="hint">선택한 월의 기부 기록이 없습니다.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Citadel Idioma · 기부 기록 페이지</p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

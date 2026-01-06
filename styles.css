@@ -14,6 +14,33 @@ body {
   padding: 0;
 }
 
+.site-nav {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.site-nav a {
+  text-decoration: none;
+  color: #475569;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.site-nav a.active {
+  color: #0f172a;
+  background: #cbd5f5;
+}
+
 header.hero {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -22,6 +49,10 @@ header.hero {
   align-items: center;
   background: linear-gradient(135deg, #0f172a, #1e293b);
   color: #f8fafc;
+}
+
+header.hero.compact {
+  padding: 32px 8vw 20px;
 }
 
 h1 {
@@ -57,6 +88,11 @@ main {
   display: grid;
   gap: 24px;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.grid.single {
+  grid-template-columns: minmax(280px, 640px);
+  justify-content: center;
 }
 
 .card {
@@ -353,6 +389,16 @@ button.ghost {
   height: 56px;
   border-radius: 50%;
   background: #e5e7eb;
+  border: 3px solid transparent;
+  box-sizing: border-box;
+}
+
+.profile-body img.status-ok {
+  border-color: #16a34a;
+}
+
+.profile-body img.status-pending {
+  border-color: #dc2626;
 }
 
 .login-user {
@@ -408,6 +454,15 @@ button.ghost {
   font-size: 12px;
   color: #6b7280;
   margin: 0;
+}
+
+.scroll-select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  font-size: 14px;
 }
 
 .file input {

@@ -17,6 +17,7 @@ const {
   DISCORD_REDIRECT_URI,
   DISCORD_GUILD_ID,
   DISCORD_ROLE_ID,
+  DISCORD_ROLE_NAME,
   DISCORD_GUILD_NAME = "citadel.sx",
   DISCORD_WEBHOOK_URL,
   BLINK_LIGHTNING_ADDRESS,
@@ -356,6 +357,7 @@ app.get("/auth/discord/callback", async (req, res) => {
       id: DISCORD_GUILD_ID,
       name: DISCORD_GUILD_NAME,
       roles,
+      roleName: DISCORD_ROLE_NAME || null,
     };
     req.session.authorized = authorized;
 
