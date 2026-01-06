@@ -84,44 +84,30 @@
               기부 누적 방식
               <select id="donation-scope">
                 <option value="session">회차 별 기부</option>
-                <option value="total">누적 기부</option>
+                <option value="daily">하루 단위 기부</option>
+                <option value="total">누적 후 한번에 기부</option>
               </select>
             </label>
             <label>
               기부 계산 방식
               <select id="donation-mode">
                 <option value="time">공부 시간 기준</option>
-                <option value="words">공부량 기준 (암기 단어)</option>
+                <option value="pages">페이지 수 기준</option>
+                <option value="problems">문제(단어) 수 기준</option>
+                <option value="other">기타(자유)</option>
               </select>
             </label>
             <label>
               기준 별 기부 사토시 양
-              <select id="sats-rate">
-                <option value="1">1 sats</option>
-                <option value="5">5 sats</option>
-                <option value="10" selected>10 sats</option>
-                <option value="20">20 sats</option>
-                <option value="50">50 sats</option>
-                <option value="100">100 sats</option>
-              </select>
+              <input id="sats-rate" type="number" min="1" value="10" />
             </label>
-            <label id="word-count-field" class="hidden">
-              오늘 외운 단어 수
-              <input id="word-count" type="number" min="0" value="0" />
-            </label>
-            <label id="word-rate-field" class="hidden">
-              단어당 기부 사토시
-              <select id="word-rate">
-                <option value="1">1 sats</option>
-                <option value="5" selected>5 sats</option>
-                <option value="10">10 sats</option>
-                <option value="20">20 sats</option>
-                <option value="50">50 sats</option>
-              </select>
+            <label id="donation-count-field" class="hidden">
+              <span>기준 수량</span>
+              <input id="donation-count" type="number" min="0" value="0" />
             </label>
             <div class="row">
-              <span class="pill">오늘 기부 예상: <strong id="sats-total">0 sats</strong></span>
-              <span class="pill">누적 기부: <strong id="sats-total-all">0 sats</strong></span>
+              <span class="pill">이번 회차 기부 금액: <strong id="sats-total">0 sats</strong></span>
+              <span class="pill">누적 기부 금액: <strong id="sats-total-all">0 sats</strong></span>
             </div>
             <div class="row">
               <button id="start" class="primary">시작</button>
@@ -132,12 +118,13 @@
               <p class="session-title">오늘 공부 기록</p>
               <div id="session-list" class="session-items"></div>
               <p id="session-empty" class="hint">아직 저장된 공부 기록이 없습니다.</p>
+              <div id="session-pagination" class="pagination"></div>
             </div>
             <div class="row">
-              <span class="pill">오늘 누적: <strong id="total-today">0분</strong></span>
-              <span class="pill">목표 달성률: <strong id="goal-progress">0%</strong></span>
+              <span class="pill">오늘 누적: <strong id="total-today">00:00:00</strong></span>
+              <span class="pill">누계 목표 달성률: <strong id="goal-progress">0%</strong></span>
             </div>
-            <button id="finish" class="accent">공부 종료 & 인증하기</button>
+            <button id="finish" class="accent">공부 종료</button>
           </div>
         </div>
 
@@ -149,8 +136,8 @@
           </p>
           <div class="stack">
             <label>
-              오늘의 학습 목표 (자동 불러오기)
-              <textarea id="study-plan-preview" rows="2" readonly></textarea>
+              오늘의 학습 목표 (수정 가능)
+              <textarea id="study-plan-preview" rows="2"></textarea>
             </label>
             <div class="row">
               <button id="open-camera">카메라 열기</button>
@@ -191,6 +178,7 @@
           <div class="stack">
             <div id="donation-history" class="history-list"></div>
             <p id="donation-history-empty" class="hint">아직 저장된 기부 기록이 없습니다.</p>
+            <div id="donation-pagination" class="pagination"></div>
           </div>
         </div>
       </section>
