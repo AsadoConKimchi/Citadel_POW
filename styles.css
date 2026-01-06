@@ -319,6 +319,22 @@ button.ghost {
   color: #111827;
 }
 
+.history-day {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.history-day__title {
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 14px;
+}
+
 .blink-address {
   display: grid;
   gap: 6px;
@@ -524,6 +540,45 @@ footer {
 .wallet-modal__body {
   display: grid;
   gap: 12px;
+}
+
+.wallet-invoice {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.wallet-invoice__label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.wallet-invoice__field {
+  display: grid;
+  gap: 8px;
+}
+
+.wallet-invoice__field textarea {
+  width: 100%;
+  min-height: 90px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#wallet-invoice-qr {
+  width: 100%;
+  max-width: 240px;
+  border-radius: 12px;
+  justify-self: center;
+  background: #fff;
+  padding: 8px;
 }
 
 .wallet-option {
