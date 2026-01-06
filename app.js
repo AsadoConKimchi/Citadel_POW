@@ -923,17 +923,7 @@ const walletDeepLinks = {
   zeus: (invoice) => `zeus://pay?invoice=${encodeURIComponent(invoice)}`,
 };
 
-const openWalletDeepLink = (deepLink, { useLinkClick = false } = {}) => {
-  if (useLinkClick) {
-    const link = document.createElement("a");
-    link.href = deepLink;
-    link.rel = "noopener";
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    return;
-  }
+const openWalletDeepLink = (deepLink) => {
   window.location.href = deepLink;
 };
 
@@ -975,7 +965,6 @@ const openWalletSelection = ({ invoice, message } = {}) => {
     return;
   }
   walletModal.dataset.invoice = normalizeInvoice(invoice) || "";
-  walletModal.dataset.lnurl = "";
   walletModal.classList.remove("hidden");
   walletModal.setAttribute("aria-hidden", "false");
   if (walletStatus) {
@@ -993,7 +982,6 @@ const closeWalletSelection = () => {
   walletModal.classList.add("hidden");
   walletModal.setAttribute("aria-hidden", "true");
   walletModal.dataset.invoice = "";
-  walletModal.dataset.lnurl = "";
   if (walletStatus) {
     walletStatus.textContent = "선택한 지갑으로 인보이스를 전달합니다.";
   }
@@ -1001,57 +989,21 @@ const closeWalletSelection = () => {
   setWalletOptionsEnabled(true);
 };
 
-const fetchLnurlInvoice = async () => {
-  if (!latestDonationPayload) {
-    throw new Error("기부 정보를 찾을 수 없습니다.");
-  }
-  const response = await fetch("/api/donation-lnurl", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      sats: latestDonationPayload.sats,
-      donationNote: latestDonationPayload.donationNote,
-    }),
-  });
-  if (!response.ok) {
-    let errorMessage = "";
-    try {
-      const parsed = await response.clone().json();
-      errorMessage = parsed?.message || "";
-    } catch (error) {
-      errorMessage = await response.text();
-    }
-    throw new Error(errorMessage || "LNURL 생성에 실패했습니다.");
-  }
-  const result = await response.json();
-  if (!result?.lnurl) {
-    throw new Error("LNURL 응답이 비어 있습니다.");
-  }
-  return result.lnurl;
-};
-
 const launchWallet = async (walletKey) => {
-  const lnurlWallets = new Set(["walletofsatoshi", "strike"]);
-  const linkClickWallets = new Set(["speed", "zeus"]);
   const modalInvoice = walletModal?.dataset?.invoice;
   if (!modalInvoice) {
     alert("인보이스 정보를 찾을 수 없습니다.");
     return;
   }
   try {
-    let invoice = modalInvoice;
-    if (lnurlWallets.has(walletKey)) {
-      invoice = await fetchLnurlInvoice();
-      if (walletModal) {
-        walletModal.dataset.lnurl = invoice;
-      }
-    } else {
-      invoice = normalizeInvoice(invoice);
+    const invoice = normalizeInvoice(modalInvoice);
+    if (!invoice) {
+      throw new Error("인보이스 정보가 올바르지 않습니다.");
     }
     const deepLinkBuilder = walletDeepLinks[walletKey];
     const deepLink = deepLinkBuilder ? deepLinkBuilder(invoice) : `lightning:${invoice}`;
     closeWalletSelection();
-    openWalletDeepLink(deepLink, { useLinkClick: linkClickWallets.has(walletKey) });
+    openWalletDeepLink(deepLink);
   } catch (error) {
     if (walletStatus) {
       walletStatus.textContent = error?.message || "지갑 실행에 실패했습니다.";
