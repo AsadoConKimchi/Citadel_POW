@@ -115,6 +115,9 @@ const formatMinutesSeconds = (seconds) => {
 };
 
 const getGoalProgress = (totalSeconds) => {
+  if (!goalInput) {
+    return 0;
+  }
   const goalMinutes = Number(goalInput.value || 0);
   if (goalMinutes <= 0) {
     return 0;
@@ -624,13 +627,6 @@ const donationModeLabels = {
   other: "기타",
 };
 
-const donationModeLabels = {
-  time: "공부 시간",
-  pages: "페이지 수",
-  problems: "문제/단어 수",
-  other: "기타",
-};
-
 const getDonationHistoryMonths = () => {
   const history = getDonationHistory();
   const months = new Set();
@@ -752,6 +748,9 @@ const saveDonationHistoryEntry = ({
 };
 
 const promptPendingDailyDonation = async () => {
+  if (!badgeCanvas || !shareDiscordButton) {
+    return;
+  }
   const pending = getPendingDaily();
   const dates = Object.keys(pending).sort();
   const pendingDate = dates.find((date) => date < todayKey);
@@ -1088,12 +1087,35 @@ const applyStudyPlanValue = (value) => {
   if (studyPlanPreview) {
     studyPlanPreview.value = trimmed;
   }
-  if (studyPlanInput) {
-    studyPlanInput.value = trimmed;
+};
+
+const saveStudyPlan = () => {
+  if (!studyPlanInput) {
+    return;
   }
-  if (studyPlanPreview) {
-    studyPlanPreview.value = trimmed;
+  applyStudyPlanValue(studyPlanInput.value);
+};
+
+const updateDonationModeUI = () => {
+  if (!donationMode || !donationCountField || !donationCountInput) {
+    return;
   }
+  const mode = donationMode.value;
+  const isTime = mode === "time";
+  donationCountField.classList.toggle("hidden", isTime);
+  const label = donationCountField.querySelector("span");
+  const labelTextMap = {
+    pages: "오늘 공부한 페이지 수",
+    problems: "오늘 푼 문제(단어) 수",
+    other: "기타 기준 수량",
+  };
+  if (label) {
+    label.textContent = labelTextMap[mode] || "기준 수량";
+  }
+  if (isTime) {
+    donationCountInput.value = "0";
+  }
+  updateSats();
 };
 
 const saveStudyPlan = () => {
@@ -1567,6 +1589,7 @@ const loadSession = async ({ ignoreUrlFlag = false } = {}) => {
 };
 
 loadSession();
+promptPendingDailyDonation();
 if (discordRefresh) {
   discordRefresh.addEventListener("click", async () => {
     discordRefresh.disabled = true;
