@@ -255,6 +255,7 @@ select {
 }
 
 button,
+.button-link,
 .file {
   border: none;
   padding: 10px 16px;
@@ -263,10 +264,12 @@ button,
   cursor: pointer;
   background: #e5e7eb;
   color: #111827;
+  text-decoration: none;
   transition: all 0.2s ease;
 }
 
 button:hover,
+.button-link:hover,
 .file:hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
@@ -274,13 +277,16 @@ button:hover,
 
 button:focus-visible,
 button.is-pressed,
+.button-link:focus-visible,
+.button-link.is-pressed,
 .file:focus-visible {
   outline: 3px solid #0f172a;
   outline-offset: 2px;
   box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.15);
 }
 
-button.primary {
+button.primary,
+.button-link.primary {
   background: #2563eb;
   color: #fff;
 }
@@ -294,13 +300,15 @@ button.primary {
 }
 
 button.accent,
+.button-link.accent,
 #download.accent {
   background: #f59e0b;
   color: #111827;
   text-decoration: none;
 }
 
-button.ghost {
+button.ghost,
+.button-link.ghost {
   background: transparent;
   border: 1px solid #cbd5f5;
 }

@@ -2063,7 +2063,7 @@ accumulationToastClose?.addEventListener("click", () => {
 });
 
 document.addEventListener("click", (event) => {
-  const target = event.target.closest("button, .file");
+  const target = event.target.closest("button, .button-link, .file");
   if (!target) {
     return;
   }
