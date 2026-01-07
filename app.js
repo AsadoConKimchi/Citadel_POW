@@ -918,8 +918,7 @@ const openLightningWallet = async () => {
 const buildLightningUri = (invoice) => `lightning:${invoice}`;
 
 const walletDeepLinks = {
-  walletofsatoshi: (invoice) =>
-    `walletofsatoshi://pay?lightning=${encodeURIComponent(invoice)}`,
+  walletofsatoshi: (invoice) => `walletofsatoshi:${invoice}`,
   blink: (invoice) => buildLightningUri(invoice),
   strike: (invoice) =>
     `strike://pay?lightning=${encodeURIComponent(invoice)}`,
