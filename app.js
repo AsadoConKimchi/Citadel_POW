@@ -12,8 +12,6 @@ const shareDiscordButton = document.getElementById("share-discord");
 const shareStatus = document.getElementById("share-status");
 const donationMode = document.getElementById("donation-mode");
 const donationScope = document.getElementById("donation-scope");
-const donationCountField = document.getElementById("donation-count-field");
-const donationCountInput = document.getElementById("donation-count");
 const sessionPagination = document.getElementById("session-pagination");
 
 const startButton = document.getElementById("start");
@@ -89,7 +87,6 @@ const donationControls = [
   donationScope,
   donationMode,
   satsRateInput,
-  donationCountInput,
 ];
 
 const setDonationControlsEnabled = (enabled) => {
@@ -119,6 +116,20 @@ const formatMinutesSeconds = (seconds) => {
   const mins = String(Math.floor(seconds / 60)).padStart(2, "0");
   const secs = String(seconds % 60).padStart(2, "0");
   return `${mins}분 ${secs}초`;
+};
+
+const parseSatsRate = (value) => {
+  const cleaned = String(value || "").replace(/[^\d]/g, "");
+  const parsed = Number(cleaned);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const formatSatsRateInput = () => {
+  if (!satsRateInput) {
+    return;
+  }
+  const numeric = parseSatsRate(satsRateInput.value);
+  satsRateInput.value = numeric ? `${numeric}sats` : "";
 };
 
 const getGoalProgress = (totalSeconds) => {
@@ -327,13 +338,13 @@ const renderSessionItems = (sessions, listEl, emptyEl, { startIndex = 0 } = {}) 
     }</span>
       </div>
       <div class="session-meta">
-        <div>실제 공부 시간: <strong>${formatMinutesSeconds(
+        <div>실제 POW 시간: <strong>${formatMinutesSeconds(
           session.durationSeconds
         )}</strong> <span class="session-rate">(${sessionGoalRate.toFixed(
       1
     )}%)</span></div>
-        <div>목표 공부 시간: <strong>${session.goalMinutes}분</strong></div>
-        <div>학습 목표: <strong>${session.plan || "미입력"}</strong></div>
+        <div>목표 POW 시간: <strong>${session.goalMinutes}분</strong></div>
+        <div>오늘의 POW 목표: <strong>${session.plan || "미입력"}</strong></div>
       </div>
     `;
     listEl.appendChild(item);
@@ -457,7 +468,7 @@ const finishSession = () => {
   if (elapsedSeconds === 0) {
     finishButton.textContent = "기록할 시간이 없습니다";
     setTimeout(() => {
-      finishButton.textContent = "공부 종료";
+      finishButton.textContent = "POW 종료";
     }, 2000);
     return;
   }
@@ -485,23 +496,18 @@ const finishSession = () => {
     const entry = pending[todayKey] || {
       seconds: 0,
       sats: 0,
-      count: 0,
       plan: "",
       goalMinutes: 0,
-      mode: donationMode?.value || "time",
+      mode: donationMode?.value || "bitcoin-social-layer",
       note: "",
     };
-    const rate = Number(satsRateInput.value || 0);
-    const count = Number(donationCountInput?.value || 0);
+    const rate = parseSatsRate(satsRateInput?.value);
     const sessionSats = calculateSats({
-      mode: donationMode?.value || "time",
       rate,
       seconds: elapsedSeconds,
-      count,
     });
     entry.seconds += elapsedSeconds;
     entry.sats += sessionSats;
-    entry.count += donationMode?.value === "time" ? 0 : count;
     entry.plan = plan || entry.plan;
     entry.goalMinutes = goalMinutes || entry.goalMinutes;
     entry.mode = donationMode?.value || entry.mode;
@@ -514,7 +520,7 @@ const finishSession = () => {
   renderSessions();
   finishButton.textContent = "인증 카드 만들기 완료!";
   setTimeout(() => {
-    finishButton.textContent = "공부 종료";
+  finishButton.textContent = "POW 종료";
   }, 2000);
   if (photoSource) {
     drawBadge();
@@ -616,23 +622,19 @@ const getSessionEstimateSeconds = () => {
   return getLastSessionSeconds().durationSeconds;
 };
 
-const calculateSats = ({ mode, rate, seconds, count }) => {
-  if (mode === "time") {
-    const totalMinutes = Math.floor(seconds / 60);
-    return totalMinutes * rate;
+const calculateSats = ({ rate, seconds }) => {
+  if (!rate) {
+    return 0;
   }
-  return count * rate;
+  const progressRate = getGoalProgress(seconds) / 100;
+  return Math.round(rate * progressRate);
 };
 
 const getDonationSatsForScope = () => {
-  const mode = donationMode?.value || "time";
-  const rate = Number(satsRateInput.value || 0);
-  const count = Number(donationCountInput?.value || 0);
+  const rate = parseSatsRate(satsRateInput?.value);
   return calculateSats({
-    mode,
     rate,
     seconds: getDonationSeconds(),
-    count,
   });
 };
 
@@ -650,14 +652,10 @@ const updateSats = () => {
   if (!satsTotalEl) {
     return;
   }
-  const mode = donationMode?.value || "time";
-  const rate = Number(satsRateInput.value || 0);
-  const count = Number(donationCountInput?.value || 0);
+  const rate = parseSatsRate(satsRateInput?.value);
   const sats = calculateSats({
-    mode,
     rate,
     seconds: getSessionEstimateSeconds(),
-    count,
   });
   satsTotalEl.textContent = `${sats} sats`;
   updateAccumulatedSats();
@@ -682,10 +680,9 @@ const renderDonationHistory = () => {
     entry.className = "history-item";
     const scopeLabels = { session: "회차 별", daily: "하루 단위", total: "누적 후 한번에" };
     const scopeLabel = scopeLabels[item.scope] || "누적";
-    const modeLabel = donationModeLabels[item.mode] || "공부 시간";
-    const countLabel = item.mode === "time" ? "" : ` · 기준 수량 ${item.count || 0}`;
+    const modeLabel = donationModeLabels[item.mode] || "Bitcoin Social Layer";
     entry.innerHTML = `
-      <div><strong>${item.date}</strong> · ${scopeLabel} · ${modeLabel}${countLabel}</div>
+      <div><strong>${item.date}</strong> · ${scopeLabel} · ${modeLabel}</div>
       <div>기부: <strong>${item.sats} sats</strong> · ${item.minutes}분</div>
       <div>메모: ${item.note || "없음"}</div>
     `;
@@ -712,10 +709,18 @@ const updateDonationTotals = () => {
 };
 
 const donationModeLabels = {
-  time: "공부 시간",
-  pages: "페이지 수",
-  problems: "문제/단어 수",
-  other: "기타",
+  "bitcoin-social-layer": "Bitcoin Social Layer",
+  "corn-gang": "Corn Gang",
+  "palma-guild": "Palma Guild",
+  "sea-of-corea": "Sea of Corea",
+  "creative-crew": "Creative Crew",
+  "satoshi-studio": "Satoshi Studio",
+  "citadel-entertainment": "Citadel Entertainment",
+  "genesis-block": "Genesis Block",
+  "citadel-force": "Citadel Force",
+  "holy-seed": "Holy Seed",
+  "language-study": "언어공부",
+  "bitcoin-global-channel": "Bitcoin Global Channel",
 };
 
 const getDonationHistoryMonths = () => {
@@ -784,10 +789,9 @@ const renderDonationHistoryPage = () => {
       entry.className = "history-item";
       const scopeLabels = { session: "회차 별", daily: "하루 단위", total: "누적 후 한번에" };
       const scopeLabel = scopeLabels[item.scope] || "누적";
-      const modeLabel = donationModeLabels[item.mode] || "공부 시간";
-      const countLabel = item.mode === "time" ? "" : ` · 기준 수량 ${item.count || 0}`;
+      const modeLabel = donationModeLabels[item.mode] || "Bitcoin Social Layer";
       entry.innerHTML = `
-        <div><strong>${item.date}</strong> · ${scopeLabel} · ${modeLabel}${countLabel}</div>
+        <div><strong>${item.date}</strong> · ${scopeLabel} · ${modeLabel}</div>
         <div>기부: <strong>${item.sats} sats</strong> · ${item.minutes}분</div>
         <div>메모: ${item.note || "없음"}</div>
       `;
@@ -817,11 +821,11 @@ const renderDonationHistoryPage = () => {
 };
 
 const initializeTotals = () => {
+  formatSatsRateInput();
   updateDisplay();
   updateTotals();
   updateDonationTotals();
   renderDonationHistory();
-  updateDonationModeUI();
 };
 
 const saveDonationHistoryEntry = ({
@@ -832,7 +836,6 @@ const saveDonationHistoryEntry = ({
   mode,
   scope,
   sessionId = "",
-  count = 0,
   note = "",
 }) => {
   const history = getDonationHistory();
@@ -844,7 +847,6 @@ const saveDonationHistoryEntry = ({
     mode,
     scope,
     sessionId,
-    count,
     note,
   });
   localStorage.setItem(donationHistoryKey, JSON.stringify(history));
@@ -867,7 +869,7 @@ const promptPendingDailyDonation = async () => {
     return;
   }
   const confirmDonation = window.confirm(
-    `${pendingDate} 누적 기부 ${entry.sats} sats가 있습니다. 지금 기부하고 공부를 시작할까요?`
+    `${pendingDate} 누적 기부 ${entry.sats} sats가 있습니다. 지금 기부하고 POW를 시작할까요?`
   );
   if (!confirmDonation) {
     return;
@@ -875,7 +877,7 @@ const promptPendingDailyDonation = async () => {
   const sessionData = {
     durationSeconds: entry.seconds || 0,
     goalMinutes: entry.goalMinutes || Number(goalInput?.value || 0),
-    plan: entry.plan || `${pendingDate} 누적 학습`,
+    plan: entry.plan || `${pendingDate} 누적 POW`,
   };
   drawBadge(sessionData);
   const payload = buildDonationPayload({
@@ -884,9 +886,8 @@ const promptPendingDailyDonation = async () => {
     durationSeconds: sessionData.durationSeconds,
     goalMinutes: sessionData.goalMinutes,
     sats: entry.sats,
-    donationModeValue: entry.mode || "time",
+    donationModeValue: entry.mode || "bitcoin-social-layer",
     donationScopeValue: "daily",
-    count: entry.count || 0,
     donationNoteValue: entry.note || "",
   });
   await openLightningWalletWithPayload(payload, {
@@ -896,9 +897,8 @@ const promptPendingDailyDonation = async () => {
         sats: entry.sats,
         minutes: Math.floor((entry.seconds || 0) / 60),
         seconds: entry.seconds || 0,
-        mode: entry.mode || "time",
+        mode: entry.mode || "bitcoin-social-layer",
         scope: "daily",
-        count: entry.count || 0,
         note: entry.note || "",
       });
       delete pending[pendingDate];
@@ -915,7 +915,6 @@ const buildDonationPayload = ({
   sats,
   donationScopeValue,
   donationModeValue,
-  count,
   donationNoteValue,
 }) => {
   const goalRate = goalMinutes
@@ -923,15 +922,13 @@ const buildDonationPayload = ({
     : "0.0";
   return {
     dataUrl,
-    plan: plan || "학습 목표 미입력",
+    plan: plan || "목표 미입력",
     studyTime: formatMinutesSeconds(durationSeconds || 0),
     goalRate: `${goalRate}%`,
     minutes: Math.floor((durationSeconds || 0) / 60),
     sats,
-    donationMode: donationModeValue || "time",
+    donationMode: donationModeValue || "bitcoin-social-layer",
     donationScope: donationScopeValue || "total",
-    count,
-    wordCount: count,
     donationNote: donationNoteValue || "",
     username: loginUserName?.textContent || "",
     videoDataUrl: selectedVideoDataUrl,
@@ -1012,9 +1009,8 @@ const openLightningWallet = async () => {
     durationSeconds: donationSeconds,
     goalMinutes: lastSession.goalMinutes,
     sats,
-    donationModeValue: donationMode?.value || "time",
+    donationModeValue: donationMode?.value || "bitcoin-social-layer",
     donationScopeValue: donationScope?.value || "total",
-    count: Number(donationCountInput?.value || 0),
     donationNoteValue: donationNote?.value?.trim() || "",
   });
   await openLightningWalletWithPayload(payload);
@@ -1154,12 +1150,12 @@ const applyStudyPlanValue = (value) => {
   if (trimmed) {
     localStorage.setItem(planKey, trimmed);
     if (planStatus) {
-      planStatus.textContent = "학습 목표가 저장되었습니다.";
+      planStatus.textContent = "목표가 저장되었습니다.";
     }
   } else {
     localStorage.removeItem(planKey);
     if (planStatus) {
-      planStatus.textContent = "학습 목표는 자동 저장됩니다.";
+      planStatus.textContent = "목표는 자동 저장됩니다.";
     }
   }
   if (studyPlanPreview) {
@@ -1174,37 +1170,6 @@ const saveStudyPlan = () => {
   applyStudyPlanValue(studyPlanInput.value);
 };
 
-const updateDonationModeUI = () => {
-  if (!donationMode || !donationCountField || !donationCountInput) {
-    return;
-  }
-  const mode = donationMode.value;
-  const isTime = mode === "time";
-  donationCountField.classList.toggle("hidden", isTime);
-  const label = donationCountField.querySelector("span");
-  const unitInput = donationCountField.querySelector(".unit-input");
-  const labelTextMap = {
-    pages: "오늘 공부한 페이지 수",
-    problems: "오늘 푼 문제(단어) 수",
-    other: "기타 기준 수량",
-  };
-  const unitTextMap = {
-    pages: "페이지",
-    problems: "문제",
-    other: "개",
-  };
-  if (label) {
-    label.textContent = labelTextMap[mode] || "기준 수량";
-  }
-  if (unitInput) {
-    unitInput.dataset.unit = unitTextMap[mode] || "";
-  }
-  donationCountInput.placeholder = "예) 5";
-  if (isTime) {
-    donationCountInput.value = "0";
-  }
-  updateSats();
-};
 
 const updateDiscordProfile = ({ user, guild, authorized }) => {
   if (!discordProfile) {
@@ -1411,14 +1376,11 @@ resetButton?.addEventListener("click", () => {
 });
 finishButton?.addEventListener("click", finishSession);
 goalInput?.addEventListener("input", updateTotals);
-if (donationMode) {
-  donationMode.addEventListener("change", () => {
-    updateDonationModeUI();
-  });
-}
 donationScope?.addEventListener("change", updateSats);
-donationCountInput?.addEventListener("input", updateSats);
-satsRateInput?.addEventListener("input", updateSats);
+satsRateInput?.addEventListener("input", () => {
+  formatSatsRateInput();
+  updateSats();
+});
 studyPlanInput?.addEventListener("input", saveStudyPlan);
 studyPlanPreview?.addEventListener("input", (event) => {
   applyStudyPlanValue(event.target.value);
@@ -1561,11 +1523,11 @@ const drawBadge = (sessionOverride = null) => {
 
   context.fillStyle = "#f8fafc";
   context.font = "bold 52px sans-serif";
-  context.fillText("오늘의 공부 인증", 60, badgeCanvas.height - overlayHeight + 90);
+  context.fillText("오늘의 POW 인증", 60, badgeCanvas.height - overlayHeight + 90);
 
   context.font = "bold 36px sans-serif";
-  const plan = lastSession.plan || "학습 목표 미입력";
-  context.fillText(`학습목표: ${plan}`, 60, badgeCanvas.height - overlayHeight + 150);
+  const plan = lastSession.plan || "목표 미입력";
+  context.fillText(`목표: ${plan}`, 60, badgeCanvas.height - overlayHeight + 150);
 
   context.font = "28px sans-serif";
   const studyTimeLabel = formatMinutesSeconds(lastSession.durationSeconds || 0);
@@ -1629,11 +1591,10 @@ shareDiscordButton?.addEventListener("click", shareToDiscord);
 donateButton?.addEventListener("click", () => {
   const donationSeconds = getDonationSeconds();
   const totalMinutes = Math.floor(donationSeconds / 60);
-  const mode = donationMode?.value || "time";
+  const mode = donationMode?.value || "bitcoin-social-layer";
   const sats = getDonationSatsForScope();
   const note = donationNote.value.trim();
   const lastSession = getLastSessionSeconds();
-  const count = Number(donationCountInput?.value || 0);
   saveDonationHistoryEntry({
     date: todayKey,
     sats,
@@ -1642,7 +1603,6 @@ donateButton?.addEventListener("click", () => {
     mode,
     scope: donationScope?.value || "total",
     sessionId: donationScope?.value === "session" ? lastSession.sessionId : "",
-    count,
     note,
   });
   donationStatus.textContent = `오늘 ${sats} sats 기부 기록을 저장했습니다.`;

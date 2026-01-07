@@ -9,14 +9,14 @@
   <body>
     <nav class="site-nav">
       <a href="index.html" class="active">오늘</a>
-      <a href="study-history.html">공부 기록</a>
+      <a href="study-history.html">POW 기록</a>
       <a href="donation-history.html">기부 기록</a>
     </nav>
     <header class="hero">
       <div class="hero-top">
         <div class="hero-brand">
           <p class="hero-brand-title">CITADEL SCHOLARSHIP</p>
-          <p class="hero-brand-subtitle">학습 기록을 장학금으로 이어주는 스터디 플랫폼</p>
+          <p class="hero-brand-subtitle">Proof of Work:Life of Satoshi</p>
         </div>
         <div class="hero-login" id="discord-card">
           <div class="row hero-login-actions">
@@ -46,22 +46,22 @@
     <main class="locked">
       <section class="grid">
         <div class="card">
-          <h2>학습 타이머</h2>
+          <h2>POW 타이머</h2>
           <div class="stack">
             <label>
-              오늘 목표 공부 시간 (분)
+              POW 시간(단위 : 분)
               <input id="goal-minutes" type="number" min="1" value="120" />
             </label>
             <label>
-              오늘의 학습 목표
+              오늘의 목표
               <textarea
                 id="study-plan"
                 rows="3"
                 placeholder="예: 스페인어 회화 2과 복습 + 단어 20개 암기"
               ></textarea>
             </label>
-            <p class="hint" id="plan-status">학습 목표는 자동 저장됩니다.</p>
-            <p class="muted">사토시 기부 기준을 공부 시작 전에 설정하세요.</p>
+            <p class="hint" id="plan-status">목표는 자동 저장됩니다.</p>
+            <p class="muted">사토시 기부 기준을 POW 시작 전에 설정하세요.</p>
             <label>
               기부 방식
               <select id="donation-scope">
@@ -70,37 +70,44 @@
               </select>
             </label>
             <label>
-              기부 계산 방식
+              기부 그룹 선택
               <select id="donation-mode">
-                <option value="time">공부 시간 기준</option>
-                <option value="pages">페이지 수 기준</option>
-                <option value="problems">문제(단어) 수 기준</option>
-                <option value="other">기타(자유)</option>
+                <option value="bitcoin-social-layer">Bitcoin Social Layer</option>
+                <option value="corn-gang">Corn Gang</option>
+                <option value="palma-guild">Palma Guild</option>
+                <option value="sea-of-corea">Sea of Corea</option>
+                <option value="creative-crew">Creative Crew</option>
+                <option value="satoshi-studio">Satoshi Studio</option>
+                <option value="citadel-entertainment">Citadel Entertainment</option>
+                <option value="genesis-block">Genesis Block</option>
+                <option value="citadel-force">Citadel Force</option>
+                <option value="holy-seed">Holy Seed</option>
+                <option value="language-study">언어공부</option>
+                <option value="bitcoin-global-channel">Bitcoin Global Channel</option>
               </select>
             </label>
             <label>
-              기준 별 기부 사토시 양
-              <span class="unit-input" data-unit="sats">
-                <input id="sats-rate" type="number" min="1" placeholder="예) 10" />
-              </span>
+              목표 달성시 기부금
+              <input
+                id="sats-rate"
+                type="text"
+                inputmode="numeric"
+                placeholder="예) 10sats"
+              />
             </label>
-            <label id="donation-count-field" class="hidden">
-              <span>기준 수량</span>
-              <span class="unit-input" data-unit="">
-                <input id="donation-count" type="number" min="0" placeholder="예) 5" />
+            <div class="row donation-summary">
+              <span class="pill">
+                이번 회차 기부금액 : <strong id="sats-total">0 sats</strong>
               </span>
-            </label>
-            <div class="row">
-              <span class="pill">이번 회차 기부 금액: <strong id="sats-total">0 sats</strong></span>
-              <span class="pill">누적 기부 금액: <strong id="sats-total-all">0 sats</strong></span>
+              <span class="pill">누적 기부금액 : <strong id="sats-total-all">0 sats</strong></span>
             </div>
             <div class="row">
               <button id="start" class="primary">시작</button>
             </div>
             <div class="session-list">
-              <p class="session-title">오늘 공부 기록</p>
+              <p class="session-title">오늘 POW 기록</p>
               <div id="session-list" class="session-items"></div>
-              <p id="session-empty" class="hint">아직 저장된 공부 기록이 없습니다.</p>
+              <p id="session-empty" class="hint">아직 저장된 POW 기록이 없습니다.</p>
               <div id="session-pagination" class="pagination"></div>
             </div>
             <div class="row">
@@ -111,14 +118,14 @@
         </div>
 
         <div class="card" id="study-card">
-          <h2>공부 인증 카드 만들기</h2>
+          <h2>POW 인증 카드 만들기</h2>
           <p class="muted">
-            카메라로 촬영하거나 사진을 업로드한 뒤, 학습 언어와 시간을 표시한 인증 이미지를
-            생성합니다.
+            카메라로 촬영하거나, 사진/동영상을 업로드 한 뒤, POW 내용과 시간, 목표 달성율을
+            표시한 인증 카드를 생성합니다.
           </p>
           <div class="stack">
             <label>
-              오늘의 학습 목표 (수정 가능)
+              오늘의 목표 (수정 가능)
               <textarea id="study-plan-preview" rows="2"></textarea>
             </label>
             <div class="row">
@@ -149,7 +156,7 @@
             </div>
             <label>
               기부 메모 (선택)
-              <input id="donation-note" placeholder="예: 누적 공부 2시간 달성" />
+              <input id="donation-note" placeholder="예: 누적 POW 2시간 달성" />
             </label>
             <button id="share-discord" class="primary">디스코드에 공유 &amp; 사토시 기부</button>
             <button id="donate" class="primary">기부 기록 저장</button>
@@ -173,7 +180,7 @@
     </main>
 
     <footer>
-      <p>Citadel Scholarship · 학습 기록이 장학금으로 이어집니다.</p>
+      <p>Citadel Scholarship · POW 기록이 장학금으로 이어집니다.</p>
     </footer>
 
     <div id="wallet-modal" class="wallet-modal hidden" aria-hidden="true">
@@ -203,7 +210,7 @@
 
     <div id="timer-modal" class="timer-modal hidden" aria-hidden="true">
       <div class="timer-modal__panel" role="dialog" aria-modal="true">
-        <h3>학습 타이머</h3>
+        <h3>POW 타이머</h3>
         <div class="timer-modal__time" id="timer-display">00:00:00</div>
         <p class="timer-modal__note">
           현재 누적 금액: <strong id="current-total-sats">0 sats</strong>
@@ -211,7 +218,7 @@
         <div class="row timer-modal__actions">
           <button id="pause" class="ghost">일시정지</button>
           <button id="reset" class="ghost">리셋</button>
-          <button id="finish" class="accent">공부 종료</button>
+          <button id="finish" class="accent">POW 종료</button>
         </div>
       </div>
     </div>
