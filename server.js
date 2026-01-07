@@ -184,7 +184,56 @@ const resolveInvoiceCandidate = (candidate) => {
   return "";
 };
 
-const sendDiscordShare = async ({ dataUrl, plan, studyTime, goalRate, minutes, sats, donationMode, wordCount, username, donationNote }) => {
+const getMentionLabel = ({ userId, username }) => {
+  if (userId) {
+    return `<@${userId}>`;
+  }
+  return username || "사용자";
+};
+
+const getFileExtension = (mimeType) => {
+  if (!mimeType) {
+    return "bin";
+  }
+  const normalized = mimeType.toLowerCase();
+  if (normalized.includes("png")) {
+    return "png";
+  }
+  if (normalized.includes("jpeg") || normalized.includes("jpg")) {
+    return "jpg";
+  }
+  if (normalized.includes("webp")) {
+    return "webp";
+  }
+  if (normalized.includes("mp4")) {
+    return "mp4";
+  }
+  if (normalized.includes("quicktime") || normalized.includes("mov")) {
+    return "mov";
+  }
+  return "bin";
+};
+
+const sanitizeFilename = (name, fallback) => {
+  const safe = String(name || "").replace(/[^\w.-]+/g, "_");
+  return safe || fallback;
+};
+
+const sendDiscordShare = async ({
+  dataUrl,
+  plan,
+  studyTime,
+  goalRate,
+  minutes,
+  sats,
+  donationMode,
+  wordCount,
+  username,
+  donationNote,
+  discordUserId,
+  videoDataUrl,
+  videoFilename,
+}) => {
   if (!DISCORD_WEBHOOK_URL) {
     throw new Error("DISCORD_WEBHOOK_URL이 설정되지 않았습니다.");
   }
@@ -194,12 +243,22 @@ const sendDiscordShare = async ({ dataUrl, plan, studyTime, goalRate, minutes, s
   }
   const form = new FormData();
   const noteLabel = donationNote?.trim() ? `메모: ${donationNote.trim()}` : "메모: 없음";
+  const mentionLabel = getMentionLabel({ userId: discordUserId, username });
   const payload = {
-    content: `${username || "사용자"}님께서 학습완료 후, ${sats} sats 기부!\n${noteLabel}`,
+    content: `${mentionLabel}님께서 학습 완료 후, **${sats} sats 기부!**\n${noteLabel}`,
   };
   form.append("payload_json", JSON.stringify(payload));
   const file = new Blob([parsed.buffer], { type: parsed.mime });
   form.append("file", file, "citadel_idioma_badge.png");
+  if (videoDataUrl) {
+    const videoParsed = parseDataUrl(videoDataUrl);
+    if (videoParsed) {
+      const extension = getFileExtension(videoParsed.mime);
+      const safeName = sanitizeFilename(videoFilename, `citadel_study_video.${extension}`);
+      const videoBlob = new Blob([videoParsed.buffer], { type: videoParsed.mime });
+      form.append("file", videoBlob, safeName);
+    }
+  }
 
   const response = await fetch(DISCORD_WEBHOOK_URL, {
     method: "POST",
@@ -464,7 +523,11 @@ app.post("/api/donation-invoice", async (req, res) => {
     wordCount,
     donationNote,
     username,
+    videoDataUrl,
+    videoFilename,
   } = req.body || {};
+  const discordUserId = req.session?.user?.id || "";
+  const resolvedUsername = req.session?.user?.username || username || "사용자";
 
   if (!dataUrl) {
     res.status(400).json({ message: "공유할 이미지가 없습니다." });
@@ -502,7 +565,10 @@ app.post("/api/donation-invoice", async (req, res) => {
         donationScope,
         wordCount,
         donationNote,
-        username,
+        username: resolvedUsername,
+        discordUserId,
+        videoDataUrl,
+        videoFilename,
       });
       pendingDonationsByInvoice.set(invoice, donationId);
       setTimeout(() => {
@@ -600,7 +666,10 @@ app.post("/api/donation-invoice", async (req, res) => {
       donationScope,
       wordCount,
       donationNote,
-      username,
+      username: resolvedUsername,
+      discordUserId,
+      videoDataUrl,
+      videoFilename,
     });
     pendingDonationsByInvoice.set(invoice, donationId);
 
@@ -769,6 +838,8 @@ app.post("/api/share", async (req, res) => {
     donationMode,
     wordCount,
     donationNote,
+    videoDataUrl,
+    videoFilename,
   } = req.body || {};
   if (!dataUrl) {
     res.status(400).json({ message: "공유할 이미지가 없습니다." });
@@ -789,6 +860,7 @@ app.post("/api/share", async (req, res) => {
     const modeLabel =
       donationMode === "words" ? `Words: ${wordCount}개` : `Study Time: ${minutes}분`;
     const username = req.session?.user?.username || "사용자";
+    const discordUserId = req.session?.user?.id || "";
     await sendDiscordShare({
       dataUrl,
       plan,
@@ -800,6 +872,9 @@ app.post("/api/share", async (req, res) => {
       wordCount,
       donationNote,
       username,
+      discordUserId,
+      videoDataUrl,
+      videoFilename,
     });
 
     res.json({ message: "디스코드 공유를 완료했습니다." });

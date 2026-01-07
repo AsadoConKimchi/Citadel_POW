@@ -24,7 +24,6 @@
             <button id="discord-web-login" class="hidden">Web Login</button>
           </div>
           <div class="profile" id="discord-profile">
-            <div class="banner" id="discord-banner"></div>
             <div class="profile-body">
               <img id="discord-avatar" alt="Discord avatar" />
               <div>
@@ -32,10 +31,10 @@
                 <p class="profile-meta" id="discord-guild">서버: -</p>
               </div>
             </div>
-          </div>
-          <div class="row hero-login-meta">
-            <button id="discord-refresh" class="ghost">역할 재확인</button>
-            <button id="discord-logout" class="ghost">로그아웃</button>
+            <div class="row profile-actions">
+              <button id="discord-refresh" class="ghost">역할 재확인</button>
+              <button id="discord-logout" class="ghost">로그아웃</button>
+            </div>
           </div>
           <p class="hint" id="discord-hint">
             역할(Role) 권한은 Discord OAuth 콜백에서 확인됩니다.
@@ -48,10 +47,6 @@
       <section class="grid">
         <div class="card">
           <h2>학습 타이머</h2>
-          <div class="timer-row">
-            <div class="timer" id="timer-display">00:00:00</div>
-            <span class="timer-note">(현재 누적 금액: <strong id="current-total-sats">0 sats</strong>)</span>
-          </div>
           <div class="stack">
             <label>
               오늘 목표 공부 시간 (분)
@@ -101,8 +96,6 @@
             </div>
             <div class="row">
               <button id="start" class="primary">시작</button>
-              <button id="pause">일시정지</button>
-              <button id="reset" class="ghost">리셋</button>
             </div>
             <div class="session-list">
               <p class="session-title">오늘 공부 기록</p>
@@ -114,11 +107,10 @@
               <span class="pill">오늘 누적: <strong id="total-today">00:00:00</strong></span>
               <span class="pill">누계 목표 달성률: <strong id="goal-progress">0%</strong></span>
             </div>
-            <button id="finish" class="accent">공부 종료</button>
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" id="study-card">
           <h2>공부 인증 카드 만들기</h2>
           <p class="muted">
             카메라로 촬영하거나 사진을 업로드한 뒤, 학습 언어와 시간을 표시한 인증 이미지를
@@ -132,9 +124,16 @@
             <div class="row">
               <button id="open-camera">카메라 열기</button>
               <label class="file">
-                사진 업로드
-                <input id="photo-upload" type="file" accept="image/*" />
+                업로드
+                <input id="media-upload" type="file" accept="image/*,video/*" />
               </label>
+              <input
+                id="camera-capture"
+                type="file"
+                accept="image/*,video/*"
+                capture="environment"
+                class="hidden"
+              />
             </div>
             <div class="preview">
               <video id="camera" autoplay playsinline></video>
@@ -143,7 +142,6 @@
               <canvas id="badge" width="1080" height="1080"></canvas>
             </div>
             <div class="row">
-              <button id="capture">촬영하기</button>
               <button id="generate" class="primary">인증 카드 생성</button>
             </div>
             <div class="result">
@@ -200,6 +198,21 @@
           <button class="wallet-option" data-wallet="zeus">Zeus</button>
         </div>
         <p class="hint" id="wallet-status">선택한 지갑으로 인보이스를 전달합니다.</p>
+      </div>
+    </div>
+
+    <div id="timer-modal" class="timer-modal hidden" aria-hidden="true">
+      <div class="timer-modal__panel" role="dialog" aria-modal="true">
+        <h3>학습 타이머</h3>
+        <div class="timer-modal__time" id="timer-display">00:00:00</div>
+        <p class="timer-modal__note">
+          현재 누적 금액: <strong id="current-total-sats">0 sats</strong>
+        </p>
+        <div class="row timer-modal__actions">
+          <button id="pause" class="ghost">일시정지</button>
+          <button id="reset" class="ghost">리셋</button>
+          <button id="finish" class="accent">공부 종료</button>
+        </div>
       </div>
     </div>
 

@@ -475,6 +475,10 @@ button.ghost {
   display: none;
 }
 
+#camera {
+  display: none;
+}
+
 #badge {
   display: none;
 }
@@ -484,18 +488,14 @@ button.ghost {
   overflow: hidden;
   border: 1px solid #e5e7eb;
   display: none;
-}
-
-.profile .banner {
-  height: 90px;
-  background: linear-gradient(135deg, #1e293b, #334155);
+  background: #ffffff;
 }
 
 .profile-body {
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 12px 16px 16px;
+  padding: 16px;
 }
 
 .profile-body img {
@@ -541,6 +541,16 @@ button.ghost {
   margin: 4px 0 0;
   color: #475569;
   font-size: 13px;
+}
+
+.profile-actions {
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.profile-actions button {
+  flex: 1;
 }
 
 #discord-card h2 {
@@ -739,6 +749,107 @@ footer {
   cursor: not-allowed;
   opacity: 0.6;
   background: #334155;
+}
+
+.timer-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 30;
+}
+
+.timer-modal.hidden {
+  display: none;
+}
+
+.timer-modal__panel {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 24px;
+  width: min(360px, 100%);
+  display: grid;
+  gap: 16px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+}
+
+.timer-modal__panel h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #0f172a;
+}
+
+.timer-modal__time {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.timer-modal__note {
+  margin: 0;
+  font-size: 14px;
+  color: #475569;
+}
+
+.timer-modal__actions {
+  justify-content: center;
+  gap: 10px;
+}
+
+.timer-modal__actions button {
+  flex: 1;
+}
+
+html.timer-modal-open,
+body.timer-modal-open {
+  overflow: hidden;
+  height: 100%;
+  touch-action: none;
+}
+
+.leaderboard {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.leaderboard-title {
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.leaderboard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.leaderboard-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  color: #475569;
+}
+
+.leaderboard-item strong {
+  color: #111827;
 }
 
 @media (max-width: 640px) {

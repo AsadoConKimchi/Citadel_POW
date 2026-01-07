@@ -20,6 +20,8 @@ const startButton = document.getElementById("start");
 const pauseButton = document.getElementById("pause");
 const resetButton = document.getElementById("reset");
 
+const timerModal = document.getElementById("timer-modal");
+
 const discordAppLogin = document.getElementById("discord-app-login");
 const discordWebLogin = document.getElementById("discord-web-login");
 const discordRefresh = document.getElementById("discord-refresh");
@@ -29,7 +31,6 @@ const discordLogout = document.getElementById("discord-logout");
 const mainContent = document.querySelector("main");
 const discordProfile = document.getElementById("discord-profile");
 const discordAvatar = document.getElementById("discord-avatar");
-const discordBanner = document.getElementById("discord-banner");
 const discordUsername = document.getElementById("discord-username");
 const discordGuild = document.getElementById("discord-guild");
 const allowedServer = document.getElementById("allowed-server");
@@ -40,14 +41,15 @@ const loginUserName = document.getElementById("login-user-name");
 
 const studyPlanPreview = document.getElementById("study-plan-preview");
 const openCameraButton = document.getElementById("open-camera");
-const captureButton = document.getElementById("capture");
 const generateButton = document.getElementById("generate");
-const photoUpload = document.getElementById("photo-upload");
+const mediaUpload = document.getElementById("media-upload");
+const cameraCapture = document.getElementById("camera-capture");
 const cameraVideo = document.getElementById("camera");
 const snapshotCanvas = document.getElementById("snapshot");
 const photoPreview = document.getElementById("photo-preview");
 const badgeCanvas = document.getElementById("badge");
 const downloadLink = document.getElementById("download");
+const studyCard = document.getElementById("study-card");
 
 const donationNote = document.getElementById("donation-note");
 const donateButton = document.getElementById("donate");
@@ -70,8 +72,11 @@ const donationHistoryPagination = document.getElementById("donation-history-pagi
 let timerInterval = null;
 let elapsedSeconds = 0;
 let isRunning = false;
-let cameraStream = null;
+let isResetReady = false;
 let photoSource = null;
+let mediaPreviewUrl = null;
+let selectedVideoDataUrl = null;
+let selectedVideoFilename = "";
 let latestDonationPayload = null;
 let sessionPage = 1;
 let donationPage = 1;
@@ -182,6 +187,40 @@ const updateDisplay = () => {
   timerDisplay.textContent = formatTime(elapsedSeconds);
 };
 
+const setPauseButtonLabel = (label) => {
+  if (!pauseButton) {
+    return;
+  }
+  pauseButton.textContent = label;
+};
+
+const setResetButtonLabel = (label) => {
+  if (!resetButton) {
+    return;
+  }
+  resetButton.textContent = label;
+};
+
+const openTimerModal = () => {
+  if (!timerModal) {
+    return;
+  }
+  timerModal.classList.remove("hidden");
+  timerModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("timer-modal-open");
+  document.documentElement.classList.add("timer-modal-open");
+};
+
+const closeTimerModal = () => {
+  if (!timerModal) {
+    return;
+  }
+  timerModal.classList.add("hidden");
+  timerModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("timer-modal-open");
+  document.documentElement.classList.remove("timer-modal-open");
+};
+
 const tick = () => {
   elapsedSeconds += 1;
   updateDisplay();
@@ -202,6 +241,9 @@ const startTimer = () => {
   isRunning = true;
   timerInterval = setInterval(tick, 1000);
   setDonationControlsEnabled(false);
+  setPauseButtonLabel("일시정지");
+  setResetButtonLabel("리셋");
+  isResetReady = false;
 };
 
 const pauseTimer = () => {
@@ -210,6 +252,7 @@ const pauseTimer = () => {
   }
   isRunning = false;
   clearInterval(timerInterval);
+  setPauseButtonLabel("재개");
 };
 
 const resetTimer = () => {
@@ -218,6 +261,7 @@ const resetTimer = () => {
   updateDisplay();
   updateSats();
   setDonationControlsEnabled(true);
+  setPauseButtonLabel("일시정지");
 };
 
 const getPlanValue = () => {
@@ -362,9 +406,23 @@ const renderStudyHistoryPage = () => {
   const listEl = document.getElementById("study-history-list");
   const emptyEl = document.getElementById("study-history-empty");
   const currentLabel = document.getElementById("study-history-date");
+  const leaderboardEl = document.getElementById("study-leaderboard");
   if (!dateSelect || !listEl || !emptyEl) {
     return;
   }
+  const totalSeconds = getAllSessionsTotalSeconds();
+  renderLeaderboard({
+    element: leaderboardEl,
+    entries: totalSeconds
+      ? [
+          {
+            name: "나",
+            value: totalSeconds,
+          },
+        ]
+      : [],
+    valueFormatter: (value) => formatMinutesSeconds(value),
+  });
   const dates = getSessionStorageDates();
   dateSelect.innerHTML = "";
   if (!dates.length) {
@@ -462,11 +520,42 @@ const finishSession = () => {
     drawBadge();
   }
   setDonationControlsEnabled(true);
+  closeTimerModal();
+  setResetButtonLabel("리셋");
+  isResetReady = false;
+  if (studyCard) {
+    studyCard.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
   openCameraButton?.focus();
 };
 
 const getDonationHistory = () =>
   JSON.parse(localStorage.getItem(donationHistoryKey) || "[]");
+
+const getTotalDonatedSats = () =>
+  getDonationHistory().reduce((sum, item) => sum + Number(item.sats || 0), 0);
+
+const renderLeaderboard = ({ element, entries, valueFormatter }) => {
+  if (!element) {
+    return;
+  }
+  element.innerHTML = "";
+  const maxCount = 5;
+  const safeEntries = Array.isArray(entries) ? entries.slice(0, maxCount) : [];
+  for (let index = 0; index < maxCount; index += 1) {
+    const entry = safeEntries[index];
+    const item = document.createElement("li");
+    item.className = "leaderboard-item";
+    const rank = index + 1;
+    if (entry) {
+      const valueLabel = valueFormatter ? valueFormatter(entry.value) : String(entry.value);
+      item.innerHTML = `<span>${rank}위 · <strong>${entry.name}</strong></span><span>${valueLabel}</span>`;
+    } else {
+      item.innerHTML = `<span>${rank}위 · <strong>대기 중</strong></span><span>-</span>`;
+    }
+    element.appendChild(item);
+  }
+};
 
 const getDonatedSecondsByScope = ({ scope, dateKey } = {}) => {
   const history = getDonationHistory();
@@ -645,9 +734,23 @@ const renderDonationHistoryPage = () => {
   const listEl = document.getElementById("donation-history-list");
   const emptyEl = document.getElementById("donation-history-empty-page");
   const currentLabel = document.getElementById("donation-history-month");
+  const leaderboardEl = document.getElementById("donation-leaderboard");
   if (!monthSelect || !listEl || !emptyEl) {
     return;
   }
+  const totalSats = getTotalDonatedSats();
+  renderLeaderboard({
+    element: leaderboardEl,
+    entries: totalSats
+      ? [
+          {
+            name: "나",
+            value: totalSats,
+          },
+        ]
+      : [],
+    valueFormatter: (value) => `${value} sats`,
+  });
   const months = getDonationHistoryMonths();
   monthSelect.innerHTML = "";
   if (!months.length) {
@@ -831,6 +934,8 @@ const buildDonationPayload = ({
     wordCount: count,
     donationNote: donationNoteValue || "",
     username: loginUserName?.textContent || "",
+    videoDataUrl: selectedVideoDataUrl,
+    videoFilename: selectedVideoFilename,
   };
 };
 
@@ -1108,9 +1213,6 @@ const updateDiscordProfile = ({ user, guild, authorized }) => {
   const avatarUrl = user?.avatar
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
     : "https://cdn.discordapp.com/embed/avatars/0.png";
-  const bannerUrl = user?.banner
-    ? `https://cdn.discordapp.com/banners/${user.id}/${user.banner}.png?size=480`
-    : "";
   discordAvatar.src = avatarUrl;
   discordAvatar.alt = user?.username ? `${user.username} avatar` : "Discord avatar";
   discordAvatar.classList.remove("status-ok", "status-pending");
@@ -1119,8 +1221,6 @@ const updateDiscordProfile = ({ user, guild, authorized }) => {
   } else if (authorized === false) {
     discordAvatar.classList.add("status-pending");
   }
-  discordBanner.style.backgroundImage = bannerUrl ? `url(${bannerUrl})` : "";
-  discordBanner.style.backgroundSize = "cover";
   discordUsername.textContent = user?.username ?? "로그인된 사용자 없음";
   if (discordGuild) {
     const guildName = guild?.name ?? "-";
@@ -1289,9 +1389,26 @@ discordLogout?.addEventListener("click", async () => {
   window.location.reload();
 });
 
-startButton?.addEventListener("click", startTimer);
-pauseButton?.addEventListener("click", pauseTimer);
-resetButton?.addEventListener("click", resetTimer);
+startButton?.addEventListener("click", () => {
+  openTimerModal();
+  startTimer();
+});
+pauseButton?.addEventListener("click", () => {
+  if (isRunning) {
+    pauseTimer();
+  } else if (elapsedSeconds > 0) {
+    startTimer();
+  }
+});
+resetButton?.addEventListener("click", () => {
+  if (isResetReady) {
+    startTimer();
+    return;
+  }
+  resetTimer();
+  setResetButtonLabel("재시작");
+  isResetReady = true;
+});
 finishButton?.addEventListener("click", finishSession);
 goalInput?.addEventListener("input", updateTotals);
 if (donationMode) {
@@ -1307,57 +1424,112 @@ studyPlanPreview?.addEventListener("input", (event) => {
   applyStudyPlanValue(event.target.value);
 });
 
-const stopCamera = () => {
-  if (cameraStream) {
-    cameraStream.getTracks().forEach((track) => track.stop());
-    cameraStream = null;
+const resetMediaPreview = () => {
+  if (mediaPreviewUrl) {
+    URL.revokeObjectURL(mediaPreviewUrl);
+    mediaPreviewUrl = null;
   }
+  selectedVideoDataUrl = null;
+  selectedVideoFilename = "";
+  photoSource = null;
+  photoPreview.src = "";
+  photoPreview.style.display = "none";
+  snapshotCanvas.style.display = "none";
+  badgeCanvas.style.display = "none";
+  cameraVideo.pause();
+  cameraVideo.removeAttribute("src");
+  cameraVideo.load();
+  cameraVideo.style.display = "none";
 };
 
-openCameraButton?.addEventListener("click", async () => {
-  try {
-    stopCamera();
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
-      audio: false,
-    });
-    cameraVideo.srcObject = cameraStream;
-    cameraVideo.style.display = "block";
-    snapshotCanvas.style.display = "none";
-    photoPreview.style.display = "none";
-    badgeCanvas.style.display = "none";
-  } catch (error) {
-    alert("카메라를 열 수 없습니다. 권한을 확인해주세요.");
-  }
-});
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("file-read-failed"));
+    reader.readAsDataURL(file);
+  });
 
-captureButton?.addEventListener("click", () => {
-  if (!cameraStream) {
-    alert("먼저 카메라를 열어주세요.");
-    return;
-  }
-  const context = snapshotCanvas.getContext("2d");
-  context.drawImage(cameraVideo, 0, 0, snapshotCanvas.width, snapshotCanvas.height);
-  snapshotCanvas.style.display = "block";
-  cameraVideo.style.display = "none";
-  photoPreview.style.display = "none";
-  badgeCanvas.style.display = "none";
-  photoSource = snapshotCanvas;
-  stopCamera();
-});
+const loadVideoThumbnail = (file) =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    mediaPreviewUrl = url;
+    cameraVideo.src = url;
+    cameraVideo.muted = true;
+    cameraVideo.playsInline = true;
+    const cleanup = () => {
+      cameraVideo.removeEventListener("loadeddata", onLoadedData);
+      cameraVideo.removeEventListener("error", onError);
+    };
+    const onLoadedData = () => {
+      try {
+        cameraVideo.currentTime = Math.min(0.1, cameraVideo.duration || 0);
+      } catch (error) {
+        cleanup();
+        reject(error);
+        return;
+      }
+      const onSeeked = () => {
+        cameraVideo.removeEventListener("seeked", onSeeked);
+        snapshotCanvas.width = cameraVideo.videoWidth || snapshotCanvas.width;
+        snapshotCanvas.height = cameraVideo.videoHeight || snapshotCanvas.height;
+        const context = snapshotCanvas.getContext("2d");
+        context.drawImage(cameraVideo, 0, 0, snapshotCanvas.width, snapshotCanvas.height);
+        const dataUrl = snapshotCanvas.toDataURL("image/png");
+        photoPreview.src = dataUrl;
+        photoPreview.style.display = "block";
+        snapshotCanvas.style.display = "none";
+        cameraVideo.style.display = "none";
+        cleanup();
+        resolve();
+      };
+      cameraVideo.addEventListener("seeked", onSeeked);
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("video-load-failed"));
+    };
+    cameraVideo.addEventListener("loadeddata", onLoadedData);
+    cameraVideo.addEventListener("error", onError);
+  });
 
-photoUpload?.addEventListener("change", (event) => {
-  const file = event.target.files[0];
+const handleMediaFile = async (file) => {
   if (!file) {
     return;
   }
+  resetMediaPreview();
+  if (file.type.startsWith("video/")) {
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      selectedVideoDataUrl = dataUrl;
+      selectedVideoFilename = file.name || "study-video";
+      await loadVideoThumbnail(file);
+      photoSource = photoPreview;
+    } catch (error) {
+      alert("동영상을 불러올 수 없습니다. 다른 파일을 선택해주세요.");
+    }
+    return;
+  }
   const url = URL.createObjectURL(file);
+  mediaPreviewUrl = url;
   photoPreview.src = url;
   photoPreview.style.display = "block";
   snapshotCanvas.style.display = "none";
   cameraVideo.style.display = "none";
   badgeCanvas.style.display = "none";
   photoSource = photoPreview;
+};
+
+openCameraButton?.addEventListener("click", () => {
+  cameraCapture?.click();
+});
+
+mediaUpload?.addEventListener("change", (event) => {
+  handleMediaFile(event.target.files[0]);
+});
+
+cameraCapture?.addEventListener("change", (event) => {
+  handleMediaFile(event.target.files[0]);
 });
 
 const drawBadge = (sessionOverride = null) => {
@@ -1446,7 +1618,7 @@ const shareToDiscord = async () => {
 
 generateButton?.addEventListener("click", () => {
   if (!photoSource) {
-    alert("먼저 사진을 촬영하거나 업로드해주세요.");
+    alert("먼저 사진 또는 동영상을 촬영하거나 업로드해주세요.");
     return;
   }
   drawBadge();
