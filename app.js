@@ -684,6 +684,15 @@ const getSessionEstimateSeconds = () => {
   return getLastSessionSeconds().durationSeconds;
 };
 
+const getSessionAccumulatedSats = () => {
+  const rate = parseSatsRate(satsRateInput?.value);
+  const lastSession = getLastSessionSeconds();
+  return calculateSats({
+    rate,
+    seconds: lastSession.durationSeconds || 0,
+  });
+};
+
 const calculateSats = ({ rate, seconds }) => {
   if (!rate) {
     return 0;
@@ -976,6 +985,9 @@ const buildDonationPayload = ({
   donationScopeValue,
   donationModeValue,
   donationNoteValue,
+  totalDonatedSats = 0,
+  accumulatedSats = 0,
+  totalAccumulatedSats = 0,
 }) => {
   const goalRate = goalMinutes
     ? Math.min(100, (durationSeconds / 60 / goalMinutes) * 100).toFixed(1)
@@ -990,6 +1002,9 @@ const buildDonationPayload = ({
     donationMode: donationModeValue || "pow-writing",
     donationScope: donationScopeValue || "total",
     donationNote: donationNoteValue || "",
+    totalDonatedSats,
+    accumulatedSats,
+    totalAccumulatedSats,
     username: loginUserName?.textContent || "",
     videoDataUrl: selectedVideoDataUrl,
     videoFilename: selectedVideoFilename,
@@ -1063,6 +1078,7 @@ const openLightningWallet = async () => {
   const dataUrl = getBadgeDataUrl();
   const lastSession = getLastSessionSeconds();
   const donationSeconds = getDonationSeconds();
+  const totalDonatedSats = getTotalDonatedSats() + sats;
   const payload = buildDonationPayload({
     dataUrl,
     plan: lastSession.plan,
@@ -1072,6 +1088,7 @@ const openLightningWallet = async () => {
     donationModeValue: donationMode?.value || "pow-writing",
     donationScopeValue: donationScope?.value || "total",
     donationNoteValue: donationNote?.value?.trim() || "",
+    totalDonatedSats,
   });
   await openLightningWalletWithPayload(payload);
 };
@@ -1091,6 +1108,7 @@ const openAccumulatedDonationPayment = async () => {
   const totalMinutes = Math.floor(donationSeconds / 60);
   const mode = donationMode?.value || "pow-writing";
   const note = donationNote?.value?.trim() || "";
+  const totalDonatedSats = getTotalDonatedSats() + sats;
   const payload = buildDonationPayload({
     dataUrl,
     plan: lastSession.plan,
@@ -1100,6 +1118,7 @@ const openAccumulatedDonationPayment = async () => {
     donationModeValue: mode,
     donationScopeValue: "total",
     donationNoteValue: note,
+    totalDonatedSats,
   });
   await openLightningWalletWithPayload(payload, {
     onSuccess: () => {
@@ -1698,15 +1717,19 @@ const shareToDiscordOnly = async () => {
     shareStatus.textContent = "디스코드 공유를 진행 중입니다.";
   }
   const lastSession = getLastSessionSeconds();
+  const accumulatedSats = getSessionAccumulatedSats();
+  const totalAccumulatedSats = getDonationSatsForScope();
   const payload = buildDonationPayload({
     dataUrl,
     plan: lastSession.plan,
     durationSeconds: lastSession.durationSeconds,
     goalMinutes: lastSession.goalMinutes,
-    sats: getDonationSatsForScope(),
+    sats: totalAccumulatedSats,
     donationModeValue: donationMode?.value || "pow-writing",
     donationScopeValue: getDonationScopeValue(),
     donationNoteValue: donationNote?.value?.trim() || "",
+    accumulatedSats,
+    totalAccumulatedSats,
   });
   try {
     const response = await fetch("/api/share", {

@@ -228,6 +228,9 @@ const sendDiscordShare = async ({
   sats,
   donationMode,
   donationScope,
+  totalDonatedSats,
+  accumulatedSats,
+  totalAccumulatedSats,
   wordCount,
   username,
   donationNote,
@@ -248,10 +251,16 @@ const sendDiscordShare = async ({
   const mentionLabel = getMentionLabel({ userId: discordUserId, username });
   const isAccumulatedPayment =
     shareContext === "payment" && donationScope && donationScope === "total";
+  const isAccumulatedShare = shareContext === "share" && donationScope === "total";
+  const safeTotalDonated = Number(totalDonatedSats || 0);
+  const safeAccumulated = Number(accumulatedSats || 0);
+  const safeTotalAccumulated = Number(totalAccumulatedSats || 0);
   const payload = {
     content: isAccumulatedPayment
-      ? `${mentionLabel}님이 적립되어있던 **${sats} sats 기부 완료!**`
-      : `${mentionLabel}님께서 학습 완료 후, **${sats} sats 기부!**\n${noteLabel}`,
+      ? `${mentionLabel}님께서 적립되어있던 **${sats} sats 기부 완료!** 지금까지 총 기부액 **${safeTotalDonated} sats!**`
+      : isAccumulatedShare
+        ? `${mentionLabel}님께서 POW 완료 후, **${safeAccumulated} sats 적립**, 총 적립액 **${safeTotalAccumulated} sats**.`
+        : `${mentionLabel}님께서 POW 완료 후, **${sats} sats 기부 완료!** 지금까지 총 기부액 **${safeTotalDonated} sats!**\n${noteLabel}`,
   };
   form.append("payload_json", JSON.stringify(payload));
   const file = new Blob([parsed.buffer], { type: parsed.mime });
@@ -526,6 +535,9 @@ app.post("/api/donation-invoice", async (req, res) => {
     sats,
     donationMode,
     donationScope,
+    totalDonatedSats,
+    accumulatedSats,
+    totalAccumulatedSats,
     wordCount,
     donationNote,
     username,
@@ -569,6 +581,9 @@ app.post("/api/donation-invoice", async (req, res) => {
         sats: satsNumber,
         donationMode,
         donationScope,
+        totalDonatedSats,
+        accumulatedSats,
+        totalAccumulatedSats,
         wordCount,
         donationNote,
         username: resolvedUsername,
@@ -671,6 +686,9 @@ app.post("/api/donation-invoice", async (req, res) => {
       sats: satsNumber,
       donationMode,
       donationScope,
+      totalDonatedSats,
+      accumulatedSats,
+      totalAccumulatedSats,
       wordCount,
       donationNote,
       username: resolvedUsername,
@@ -845,6 +863,9 @@ app.post("/api/share", async (req, res) => {
     sats,
     donationMode,
     donationScope,
+    totalDonatedSats,
+    accumulatedSats,
+    totalAccumulatedSats,
     wordCount,
     donationNote,
     videoDataUrl,
@@ -879,6 +900,9 @@ app.post("/api/share", async (req, res) => {
       sats,
       donationMode,
       donationScope,
+      totalDonatedSats,
+      accumulatedSats,
+      totalAccumulatedSats,
       wordCount,
       donationNote,
       username,
