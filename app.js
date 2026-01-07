@@ -91,6 +91,18 @@ const donationControls = [
   satsRateInput,
 ];
 
+const getDonationScopeValue = () => donationScope?.value || "session";
+
+const updateShareButtonLabel = () => {
+  if (!shareDiscordButton) {
+    return;
+  }
+  shareDiscordButton.textContent =
+    getDonationScopeValue() === "total"
+      ? "디스코드에 공유"
+      : "디스코드에 공유 & 사토시 기부";
+};
+
 const setDonationControlsEnabled = (enabled) => {
   donationControls.forEach((control) => {
     if (control) {
@@ -629,7 +641,7 @@ const getAllSessionsTotalSeconds = () => {
 };
 
 const getDonationSeconds = () => {
-  const scope = donationScope?.value || "session";
+  const scope = getDonationScopeValue();
   if (scope === "session") {
     return getLastSessionSeconds().durationSeconds;
   }
@@ -675,15 +687,14 @@ const updateAccumulatedSats = () => {
 };
 
 const updateSats = () => {
-  if (!satsTotalEl) {
-    return;
-  }
   const rate = parseSatsRate(satsRateInput?.value);
   const sats = calculateSats({
     rate,
     seconds: getSessionEstimateSeconds(),
   });
-  satsTotalEl.textContent = `${sats} sats`;
+  if (satsTotalEl) {
+    satsTotalEl.textContent = `${sats} sats`;
+  }
   updateAccumulatedSats();
 };
 
@@ -726,11 +737,10 @@ const renderDonationHistory = () => {
 };
 
 const updateDonationTotals = () => {
-  if (!satsTotalAllEl) {
-    return;
-  }
   const total = getDonationHistory().reduce((sum, item) => sum + (item.sats || 0), 0);
-  satsTotalAllEl.textContent = `${total} sats`;
+  if (satsTotalAllEl) {
+    satsTotalAllEl.textContent = `${total} sats`;
+  }
   updateAccumulatedSats();
 };
 
@@ -845,6 +855,7 @@ const initializeTotals = () => {
   updateDisplay();
   updateTotals();
   updateDonationTotals();
+  updateShareButtonLabel();
   renderDonationHistory();
 };
 
@@ -1396,7 +1407,10 @@ resetButton?.addEventListener("click", () => {
 });
 finishButton?.addEventListener("click", finishSession);
 goalInput?.addEventListener("input", updateTotals);
-donationScope?.addEventListener("change", updateSats);
+donationScope?.addEventListener("change", () => {
+  updateSats();
+  updateShareButtonLabel();
+});
 satsRateInput?.addEventListener("input", () => {
   formatSatsRateInput();
   updateSats();
@@ -1551,13 +1565,21 @@ const drawBadge = (sessionOverride = null) => {
 
   context.font = "28px sans-serif";
   const studyTimeLabel = formatMinutesSeconds(lastSession.durationSeconds || 0);
-  context.fillText(`Study Time: ${studyTimeLabel}`, 60, badgeCanvas.height - overlayHeight + 205);
+  context.fillText(`POW Time: ${studyTimeLabel}`, 60, badgeCanvas.height - overlayHeight + 205);
 
   context.fillText(
     `Goal Rate: ${lastGoalRate.toFixed(1)}%`,
     60,
     badgeCanvas.height - overlayHeight + 245
   );
+
+  const scopeValue = donationScope?.value || "session";
+  const badgeSats = getDonationSatsForScope();
+  const badgeSatsLabel =
+    scopeValue === "total"
+      ? `현재 적립금액 : ${badgeSats}sats`
+      : `POW Donation : ${badgeSats}sats`;
+  context.fillText(badgeSatsLabel, 60, badgeCanvas.height - overlayHeight + 285);
 
   context.font = "24px sans-serif";
   const date = new Date().toLocaleDateString("ko-KR", {
@@ -1594,7 +1616,59 @@ const getBadgeDataUrl = () => {
   return scaled.toDataURL("image/png", 0.92);
 };
 
+const shareToDiscordOnly = async () => {
+  const dataUrl = getBadgeDataUrl();
+  if (!dataUrl || dataUrl === "data:,") {
+    alert("먼저 인증 카드를 생성해주세요.");
+    return;
+  }
+  if (shareStatus) {
+    shareStatus.textContent = "디스코드 공유를 진행 중입니다.";
+  }
+  const lastSession = getLastSessionSeconds();
+  const payload = buildDonationPayload({
+    dataUrl,
+    plan: lastSession.plan,
+    durationSeconds: lastSession.durationSeconds,
+    goalMinutes: lastSession.goalMinutes,
+    sats: getDonationSatsForScope(),
+    donationModeValue: donationMode?.value || "pow-writing",
+    donationScopeValue: getDonationScopeValue(),
+    donationNoteValue: donationNote?.value?.trim() || "",
+  });
+  try {
+    const response = await fetch("/api/share", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      let errorMessage = "";
+      try {
+        const parsed = await response.clone().json();
+        errorMessage = parsed?.message || "";
+      } catch (error) {
+        errorMessage = await response.text();
+      }
+      throw new Error(errorMessage || "디스코드 공유에 실패했습니다.");
+    }
+    if (shareStatus) {
+      shareStatus.textContent = "디스코드 공유를 완료했습니다.";
+    }
+    updateAccumulatedSats();
+    showAccumulationToast("현재 적립금액이 갱신되었습니다.");
+  } catch (error) {
+    if (shareStatus) {
+      shareStatus.textContent = error?.message || "디스코드 공유에 실패했습니다.";
+    }
+  }
+};
+
 const shareToDiscord = async () => {
+  if (getDonationScopeValue() === "total") {
+    await shareToDiscordOnly();
+    return;
+  }
   await openLightningWallet();
 };
 

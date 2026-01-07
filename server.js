@@ -858,7 +858,7 @@ app.post("/api/share", async (req, res) => {
     const studyTimeLabel = studyTime || `${minutes ?? 0}분`;
     const goalRateLabel = goalRate || "0.0%";
     const modeLabel =
-      donationMode === "words" ? `Words: ${wordCount}개` : `Study Time: ${minutes}분`;
+      donationMode === "words" ? `Words: ${wordCount}개` : `POW Time: ${minutes}분`;
     const username = req.session?.user?.username || "사용자";
     const discordUserId = req.session?.user?.id || "";
     await sendDiscordShare({
