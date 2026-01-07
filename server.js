@@ -249,14 +249,14 @@ const sendDiscordShare = async ({
   };
   form.append("payload_json", JSON.stringify(payload));
   const file = new Blob([parsed.buffer], { type: parsed.mime });
-  form.append("file", file, "citadel_idioma_badge.png");
+  form.append("files[0]", file, "citadel_idioma_badge.png");
   if (videoDataUrl) {
     const videoParsed = parseDataUrl(videoDataUrl);
     if (videoParsed) {
       const extension = getFileExtension(videoParsed.mime);
       const safeName = sanitizeFilename(videoFilename, `citadel_study_video.${extension}`);
       const videoBlob = new Blob([videoParsed.buffer], { type: videoParsed.mime });
-      form.append("file", videoBlob, safeName);
+      form.append("files[1]", videoBlob, safeName);
     }
   }
 
