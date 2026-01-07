@@ -155,13 +155,24 @@
           </div>
         </div>
 
-        <div class="card">
-          <h2>기부 기록</h2>
-          <p class="muted">저장된 기부 기록을 확인할 수 있습니다.</p>
+        <div class="card" id="today-donation-summary">
+          <h2>오늘 기부 현황</h2>
+          <p class="muted">선택한 기부 방식에 따라 누적 금액과 적립액을 확인하세요.</p>
           <div class="stack">
-            <div id="donation-history" class="history-list"></div>
-            <p id="donation-history-empty" class="hint">아직 저장된 기부 기록이 없습니다.</p>
-            <div id="donation-pagination" class="pagination"></div>
+            <div class="row">
+              <span class="pill">
+                지금까지 누적 기부 금액: <strong id="today-total-donated">0 sats</strong>
+              </span>
+            </div>
+            <div class="row hidden" id="today-accumulated-row">
+              <span class="pill">
+                지금까지 적립액: <strong id="today-accumulated-sats">0 sats</strong>
+              </span>
+            </div>
+            <button id="today-accumulated-pay" class="primary hidden">적립액 기부하기</button>
+            <p class="hint" id="today-donation-hint">
+              누적 후 한번에 기부를 선택하면 적립액을 한 번에 기부할 수 있습니다.
+            </p>
           </div>
         </div>
       </section>

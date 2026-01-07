@@ -58,6 +58,10 @@ const donationPagination = document.getElementById("donation-pagination");
 const currentTotalSats = document.getElementById("current-total-sats");
 const donationPageTotal = document.getElementById("donation-page-total");
 const donationPagePay = document.getElementById("donation-page-pay");
+const todayTotalDonated = document.getElementById("today-total-donated");
+const todayAccumulatedRow = document.getElementById("today-accumulated-row");
+const todayAccumulatedSats = document.getElementById("today-accumulated-sats");
+const todayAccumulatedPay = document.getElementById("today-accumulated-pay");
 const walletModal = document.getElementById("wallet-modal");
 const walletModalClose = document.getElementById("wallet-modal-close");
 const walletStatus = document.getElementById("wallet-status");
@@ -101,6 +105,26 @@ const updateShareButtonLabel = () => {
     getDonationScopeValue() === "total"
       ? "디스코드에 공유"
       : "디스코드에 공유 & 사토시 기부";
+};
+
+const updateTodayDonationSummary = () => {
+  if (!todayTotalDonated && !todayAccumulatedRow && !todayAccumulatedSats) {
+    return;
+  }
+  const totalDonated = getTotalDonatedSats();
+  if (todayTotalDonated) {
+    todayTotalDonated.textContent = `${totalDonated} sats`;
+  }
+  const isAccumulated = getDonationScopeValue() === "total";
+  if (todayAccumulatedRow) {
+    todayAccumulatedRow.classList.toggle("hidden", !isAccumulated);
+  }
+  if (todayAccumulatedPay) {
+    todayAccumulatedPay.classList.toggle("hidden", !isAccumulated);
+  }
+  if (todayAccumulatedSats) {
+    todayAccumulatedSats.textContent = `${getDonationSatsForScope()} sats`;
+  }
 };
 
 const setDonationControlsEnabled = (enabled) => {
@@ -684,6 +708,9 @@ const updateAccumulatedSats = () => {
   if (donationPageTotal) {
     donationPageTotal.textContent = `${sats} sats`;
   }
+  if (todayAccumulatedSats) {
+    todayAccumulatedSats.textContent = `${sats} sats`;
+  }
 };
 
 const updateSats = () => {
@@ -742,6 +769,7 @@ const updateDonationTotals = () => {
     satsTotalAllEl.textContent = `${total} sats`;
   }
   updateAccumulatedSats();
+  updateTodayDonationSummary();
 };
 
 const donationModeLabels = {
@@ -856,6 +884,7 @@ const initializeTotals = () => {
   updateTotals();
   updateDonationTotals();
   updateShareButtonLabel();
+  updateTodayDonationSummary();
   renderDonationHistory();
 };
 
@@ -1045,6 +1074,48 @@ const openLightningWallet = async () => {
     donationNoteValue: donationNote?.value?.trim() || "",
   });
   await openLightningWalletWithPayload(payload);
+};
+
+const openAccumulatedDonationPayment = async () => {
+  if (getDonationScopeValue() !== "total") {
+    return;
+  }
+  const sats = getDonationSatsForScope();
+  const donationSeconds = getDonationSeconds();
+  if (!sats || sats <= 0 || donationSeconds <= 0) {
+    alert("기부할 적립 금액이 없습니다.");
+    return;
+  }
+  const dataUrl = getBadgeDataUrl();
+  const lastSession = getLastSessionSeconds();
+  const totalMinutes = Math.floor(donationSeconds / 60);
+  const mode = donationMode?.value || "pow-writing";
+  const note = donationNote?.value?.trim() || "";
+  const payload = buildDonationPayload({
+    dataUrl,
+    plan: lastSession.plan,
+    durationSeconds: donationSeconds,
+    goalMinutes: lastSession.goalMinutes,
+    sats,
+    donationModeValue: mode,
+    donationScopeValue: "total",
+    donationNoteValue: note,
+  });
+  await openLightningWalletWithPayload(payload, {
+    onSuccess: () => {
+      saveDonationHistoryEntry({
+        date: todayKey,
+        sats,
+        minutes: totalMinutes,
+        seconds: donationSeconds,
+        mode,
+        scope: "total",
+        sessionId: "",
+        note,
+      });
+      showAccumulationToast("적립액 기부 요청이 완료되었습니다.");
+    },
+  });
 };
 
 const buildLightningUri = (invoice) => `lightning:${invoice}`;
@@ -1410,6 +1481,7 @@ goalInput?.addEventListener("input", updateTotals);
 donationScope?.addEventListener("change", () => {
   updateSats();
   updateShareButtonLabel();
+  updateTodayDonationSummary();
 });
 satsRateInput?.addEventListener("input", () => {
   formatSatsRateInput();
@@ -1681,6 +1753,7 @@ generateButton?.addEventListener("click", () => {
 });
 
 shareDiscordButton?.addEventListener("click", shareToDiscord);
+todayAccumulatedPay?.addEventListener("click", openAccumulatedDonationPayment);
 
 donateButton?.addEventListener("click", () => {
   const donationSeconds = getDonationSeconds();
