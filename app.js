@@ -914,12 +914,20 @@ const openLightningWallet = async () => {
   await openLightningWalletWithPayload(payload);
 };
 
+const buildLightningUri = (invoice) => `lightning:${invoice}`;
+
 const walletDeepLinks = {
-  walletofsatoshi: (invoice) => `lightning:${invoice}`,
-  speed: (invoice) => `lightning:${invoice}`,
-  blink: (invoice) => `lightning:${invoice}`,
-  strike: (invoice) => `lightning:${invoice}`,
-  zeus: (invoice) => `lightning:${invoice}`,
+  walletofsatoshi: (invoice) =>
+    `walletofsatoshi://pay?lightning=${encodeURIComponent(
+      buildLightningUri(invoice)
+    )}`,
+  speed: (invoice) =>
+    `speed://pay?lightning=${encodeURIComponent(buildLightningUri(invoice))}`,
+  blink: (invoice) => buildLightningUri(invoice),
+  strike: (invoice) =>
+    `strike://pay?lightning=${encodeURIComponent(buildLightningUri(invoice))}`,
+  zeus: (invoice) =>
+    `zeus://pay?lightning=${encodeURIComponent(buildLightningUri(invoice))}`,
 };
 
 const openWalletDeepLink = (deepLink) => {
