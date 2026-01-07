@@ -920,8 +920,7 @@ const buildLightningUri = (invoice) => `lightning:${invoice}`;
 const walletDeepLinks = {
   walletofsatoshi: (invoice) => `walletofsatoshi:${invoice}`,
   blink: (invoice) => buildLightningUri(invoice),
-  strike: (invoice) =>
-    `strike://pay?lightning=${encodeURIComponent(invoice)}`,
+  strike: (invoice) => `strike:${invoice}`,
   zeus: (invoice) => `zeusln:${invoice}`,
 };
 
