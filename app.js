@@ -71,6 +71,8 @@ const walletInvoiceQr = document.getElementById("wallet-invoice-qr");
 const walletToast = document.getElementById("wallet-toast");
 const donationHistoryPagination = document.getElementById("donation-history-pagination");
 const accumulationToast = document.getElementById("accumulation-toast");
+const accumulationToastMessage = document.getElementById("accumulation-toast-message");
+const accumulationToastClose = accumulationToast?.querySelector(".toast-close");
 
 let timerInterval = null;
 let elapsedSeconds = 0;
@@ -87,7 +89,6 @@ let donationHistoryPage = 1;
 const pendingDailyKey = "citadel-pending-daily";
 let hasPromptedDaily = false;
 let walletToastTimeout = null;
-let accumulationToastTimeout = null;
 
 const donationControls = [
   donationScope,
@@ -139,14 +140,12 @@ const showAccumulationToast = (message) => {
   if (!accumulationToast) {
     return;
   }
-  accumulationToast.textContent = message;
-  accumulationToast.classList.remove("hidden");
-  if (accumulationToastTimeout) {
-    clearTimeout(accumulationToastTimeout);
+  if (accumulationToastMessage) {
+    accumulationToastMessage.textContent = message;
+  } else {
+    accumulationToast.textContent = message;
   }
-  accumulationToastTimeout = setTimeout(() => {
-    accumulationToast.classList.add("hidden");
-  }, 2000);
+  accumulationToast.classList.remove("hidden");
 };
 
 const getTodayKey = () => new Date().toISOString().slice(0, 10);
@@ -234,12 +233,13 @@ const savePendingDaily = (pending) => {
 };
 
 const updateTotals = () => {
-  if (!totalTodayEl || !goalProgressEl) {
-    return;
-  }
   const totalSeconds = getStoredTotal();
-  totalTodayEl.textContent = formatTime(totalSeconds);
-  goalProgressEl.textContent = `${getGoalProgress(totalSeconds).toFixed(1)}%`;
+  if (totalTodayEl) {
+    totalTodayEl.textContent = formatTime(totalSeconds);
+  }
+  if (goalProgressEl) {
+    goalProgressEl.textContent = `${getGoalProgress(totalSeconds).toFixed(1)}%`;
+  }
   updateSats();
 };
 
@@ -1828,6 +1828,9 @@ const copyWalletInvoice = async () => {
 };
 
 walletInvoiceQr?.addEventListener("click", copyWalletInvoice);
+accumulationToastClose?.addEventListener("click", () => {
+  accumulationToast?.classList.add("hidden");
+});
 
 document.addEventListener("click", (event) => {
   const target = event.target.closest("button, .file");
