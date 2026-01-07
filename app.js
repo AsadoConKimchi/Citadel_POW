@@ -1126,22 +1126,34 @@ const updateDiscordProfile = ({ user, guild, authorized }) => {
 
 const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
   if (error) {
-    discordStatus.textContent = `로그인 상태: ${error}`;
-    discordHint.textContent = "서버 설정을 확인해주세요.";
+    if (discordStatus) {
+      discordStatus.textContent = `로그인 상태: ${error}`;
+    }
+    if (discordHint) {
+      discordHint.textContent = "서버 설정을 확인해주세요.";
+    }
     mainContent.classList.add("locked");
-    discordLogout.style.display = "none";
+    if (discordLogout) {
+      discordLogout.style.display = "none";
+    }
     if (discordRefresh) {
       discordRefresh.style.display = "none";
     }
-    discordProfile.style.display = "none";
+    if (discordProfile) {
+      discordProfile.style.display = "none";
+    }
     if (discordAvatar) {
       discordAvatar.classList.remove("status-ok", "status-pending");
     }
     if (loginUser) {
       loginUser.classList.add("hidden");
     }
-    discordAppLogin.style.display = "inline-flex";
-    discordWebLogin.style.display = "inline-flex";
+    if (discordAppLogin) {
+      discordAppLogin.style.display = "inline-flex";
+    }
+    if (discordWebLogin) {
+      discordWebLogin.style.display = "none";
+    }
     if (allowedServer) {
       allowedServer.textContent = "접속 가능 서버: 확인 실패";
     }
@@ -1149,22 +1161,34 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
   }
 
   if (!authenticated) {
-    discordStatus.textContent = "로그인 상태: 미인증";
-    discordHint.textContent = "Discord 로그인 후 역할(Role) 검증이 완료됩니다.";
+    if (discordStatus) {
+      discordStatus.textContent = "로그인 상태: 미인증";
+    }
+    if (discordHint) {
+      discordHint.textContent = "Discord 로그인 후 역할(Role) 검증이 완료됩니다.";
+    }
     mainContent.classList.add("locked");
-    discordLogout.style.display = "none";
+    if (discordLogout) {
+      discordLogout.style.display = "none";
+    }
     if (discordRefresh) {
       discordRefresh.style.display = "none";
     }
-    discordProfile.style.display = "none";
+    if (discordProfile) {
+      discordProfile.style.display = "none";
+    }
     if (discordAvatar) {
       discordAvatar.classList.remove("status-ok", "status-pending");
     }
     if (loginUser) {
       loginUser.classList.add("hidden");
     }
-    discordAppLogin.style.display = "inline-flex";
-    discordWebLogin.style.display = "inline-flex";
+    if (discordAppLogin) {
+      discordAppLogin.style.display = "inline-flex";
+    }
+    if (discordWebLogin) {
+      discordWebLogin.style.display = "none";
+    }
     if (allowedServer) {
       allowedServer.textContent = "접속 가능 서버: 로그인 필요";
     }
@@ -1172,19 +1196,31 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
   }
 
   if (!authorized) {
-    discordStatus.textContent = "로그인 상태: 역할 미충족";
-    discordHint.textContent = "지정된 Role 권한이 필요합니다.";
+    if (discordStatus) {
+      discordStatus.textContent = "로그인 상태: 역할 미충족";
+    }
+    if (discordHint) {
+      discordHint.textContent = "지정된 Role 권한이 필요합니다.";
+    }
     mainContent.classList.add("locked");
-    discordLogout.style.display = "inline-flex";
+    if (discordLogout) {
+      discordLogout.style.display = "inline-flex";
+    }
     if (discordRefresh) {
       discordRefresh.style.display = "inline-flex";
     }
-    discordProfile.style.display = "block";
+    if (discordProfile) {
+      discordProfile.style.display = "block";
+    }
     if (loginUser) {
       loginUser.classList.remove("hidden");
     }
-    discordAppLogin.style.display = "none";
-    discordWebLogin.style.display = "none";
+    if (discordAppLogin) {
+      discordAppLogin.style.display = "none";
+    }
+    if (discordWebLogin) {
+      discordWebLogin.style.display = "none";
+    }
     if (allowedServer) {
       const guildName = guild?.name ?? "citadel.sx";
       allowedServer.textContent = `접속 가능 서버: ${guildName}`;
@@ -1197,19 +1233,31 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
   }
 
   const roleName = guild?.roleName || "지정 역할";
-  discordStatus.textContent = `로그인 상태: 역할(${roleName}) 확인`;
-  discordHint.textContent = "역할(Role) 확인 완료. 모든 기능을 사용할 수 있습니다.";
+  if (discordStatus) {
+    discordStatus.textContent = `로그인 상태: 역할(${roleName}) 확인`;
+  }
+  if (discordHint) {
+    discordHint.textContent = "역할(Role) 확인 완료. 모든 기능을 사용할 수 있습니다.";
+  }
   mainContent.classList.remove("locked");
-  discordLogout.style.display = "inline-flex";
+  if (discordLogout) {
+    discordLogout.style.display = "inline-flex";
+  }
   if (discordRefresh) {
     discordRefresh.style.display = "inline-flex";
   }
-  discordProfile.style.display = "block";
+  if (discordProfile) {
+    discordProfile.style.display = "block";
+  }
   if (loginUser) {
     loginUser.classList.remove("hidden");
   }
-  discordAppLogin.style.display = "none";
-  discordWebLogin.style.display = "none";
+  if (discordAppLogin) {
+    discordAppLogin.style.display = "none";
+  }
+  if (discordWebLogin) {
+    discordWebLogin.style.display = "none";
+  }
   updateDiscordProfile({ user, guild, authorized: true });
   if (allowedServer) {
     const guildName = guild?.name ?? "citadel.sx";

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Citadel Idioma</title>
+    <title>Citadel Scholarship</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -13,31 +13,20 @@
       <a href="donation-history.html">기부 기록</a>
     </nav>
     <header class="hero">
-      <div>
-        <p class="eyebrow">Citadel Idioma</p>
-        <h1>공부 시간을 사토시로 이어주는 학습 기록 앱</h1>
-        <p class="subtitle">
-          Discord 로그인을 시작으로, 타이머 기록 · 공부 인증 · 사토시 기부 흐름까지 한 번에.
-        </p>
-      </div>
-      <div class="card" id="discord-card">
-        <h2>Discord 로그인</h2>
-        <p class="muted">
-          <strong>시타델 회원 전용</strong><br />
-          시타델 이디오마는 지정된 디스코드 서버 회원만 사용할 수 있습니다.
-        </p>
-        <div class="row">
-          <span class="pill" id="allowed-server">접속 가능 서버: 확인 중...</span>
+      <div class="hero-top">
+        <div class="hero-brand">
+          <p class="hero-brand-title">CITADEL SCHOLARSHIP</p>
+          <p class="hero-brand-subtitle">학습 기록을 장학금으로 이어주는 스터디 플랫폼</p>
         </div>
-          <div class="stack">
-            <div class="row">
-              <button id="discord-app-login" class="primary">App Login</button>
-              <button id="discord-web-login">Web Login</button>
-              <div id="login-user" class="login-user hidden">
-                <span class="login-label">로그인됨:</span>
-                <span id="login-user-name">-</span>
-              </div>
+        <div class="hero-login" id="discord-card">
+          <div class="row hero-login-actions">
+            <button id="discord-app-login" class="primary">App Login</button>
+            <button id="discord-web-login" class="hidden">Web Login</button>
+            <div id="login-user" class="login-user hidden">
+              <span class="login-label">로그인됨:</span>
+              <span id="login-user-name">-</span>
             </div>
+          </div>
           <div class="profile" id="discord-profile">
             <div class="banner" id="discord-banner"></div>
             <div class="profile-body">
@@ -48,8 +37,8 @@
               </div>
             </div>
           </div>
-          <div class="row status-row">
-            <span class="pill" id="discord-status">로그인 상태: 확인 중...</span>
+          <div class="row hero-login-meta">
+            <span class="pill" id="allowed-server">접속 가능 서버: 확인 중...</span>
             <button id="discord-refresh" class="ghost">역할 재확인</button>
             <button id="discord-logout" class="ghost">로그아웃</button>
           </div>
@@ -188,7 +177,7 @@
     </main>
 
     <footer>
-      <p>Citadel Idioma · 공부 기록을 사토시 기부로 연결합니다.</p>
+      <p>Citadel Scholarship · 학습 기록이 장학금으로 이어집니다.</p>
     </footer>
 
     <div id="wallet-modal" class="wallet-modal hidden" aria-hidden="true">
