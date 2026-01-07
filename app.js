@@ -65,6 +65,9 @@ const walletOptions = document.querySelectorAll(".wallet-option");
 const walletInvoice = document.getElementById("wallet-invoice");
 const walletInvoiceQr = document.getElementById("wallet-invoice-qr");
 const walletToast = document.getElementById("wallet-toast");
+const walletOfSatoshiLink = document.querySelector(
+  '.wallet-option--link[data-wallet="walletofsatoshi"]'
+);
 const donationHistoryPagination = document.getElementById("donation-history-pagination");
 
 let timerInterval = null;
@@ -935,8 +938,28 @@ const openWalletDeepLink = (deepLink) => {
 
 const setWalletOptionsEnabled = (enabled) => {
   walletOptions.forEach((option) => {
-    option.disabled = !enabled;
+    if ("disabled" in option) {
+      option.disabled = !enabled;
+    } else {
+      option.setAttribute("aria-disabled", enabled ? "false" : "true");
+      option.tabIndex = enabled ? 0 : -1;
+    }
   });
+};
+
+const updateWalletLinkHref = (invoice) => {
+  if (!walletOfSatoshiLink) {
+    return;
+  }
+  if (!invoice) {
+    walletOfSatoshiLink.setAttribute("href", "#");
+    return;
+  }
+  const deepLinkBuilder = walletDeepLinks.walletofsatoshi;
+  walletOfSatoshiLink.setAttribute(
+    "href",
+    deepLinkBuilder ? deepLinkBuilder(invoice) : `lightning:${invoice}`
+  );
 };
 
 const showWalletToast = (message) => {
@@ -990,6 +1013,7 @@ const openWalletSelection = ({ invoice, message } = {}) => {
   }
   renderWalletInvoice(invoice);
   setWalletOptionsEnabled(Boolean(invoice));
+  updateWalletLinkHref(normalizeInvoice(invoice));
   if (walletToast) {
     walletToast.classList.add("hidden");
   }
@@ -1007,6 +1031,7 @@ const closeWalletSelection = () => {
   }
   renderWalletInvoice("");
   setWalletOptionsEnabled(true);
+  updateWalletLinkHref("");
   if (walletToast) {
     walletToast.classList.add("hidden");
   }
@@ -1445,6 +1470,12 @@ walletModal?.addEventListener("click", (event) => {
 });
 walletOptions.forEach((option) => {
   option.addEventListener("click", async (event) => {
+    if (event.currentTarget?.tagName === "A") {
+      if (event.currentTarget.getAttribute("aria-disabled") === "true") {
+        event.preventDefault();
+      }
+      return;
+    }
     const walletKey = event.currentTarget?.dataset?.wallet;
     if (walletKey) {
       await launchWallet(walletKey);

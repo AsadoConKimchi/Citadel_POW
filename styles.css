@@ -644,6 +644,19 @@ footer {
   color: #f8fafc;
 }
 
+.wallet-option--link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.wallet-option[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background: #334155;
+  pointer-events: none;
+}
+
 .wallet-option:hover {
   background: #1e293b;
 }
