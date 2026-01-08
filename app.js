@@ -553,15 +553,41 @@ const finishSession = () => {
   const achieved = goalMinutes > 0 ? elapsedSeconds >= goalMinutes * 60 : false;
   const sessionId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   const sessions = loadSessions();
-  sessions.push({
+  const sessionTimestamp = new Date().toISOString();
+  const sessionData = {
     durationSeconds: elapsedSeconds,
     goalMinutes,
     plan,
     achieved,
-    timestamp: new Date().toISOString(),
+    timestamp: sessionTimestamp,
     sessionId,
-  });
+  };
+  sessions.push(sessionData);
   saveSessions(sessions);
+
+  // 백엔드에 공부 세션 저장
+  if (typeof StudySessionAPI !== 'undefined') {
+    const endTime = new Date(sessionTimestamp);
+    const startTime = new Date(endTime.getTime() - elapsedSeconds * 1000);
+
+    // 현재 로그인한 사용자 정보 가져오기
+    fetch('/api/session')
+      .then(res => res.json())
+      .then(sessionData => {
+        if (sessionData.authenticated && sessionData.user?.id) {
+          return StudySessionAPI.create(sessionData.user.id, {
+            startTime: startTime.toISOString(),
+            endTime: endTime.toISOString(),
+            durationMinutes: Math.round(elapsedSeconds / 60),
+            planText: plan,
+            photoUrl: null,
+          });
+        }
+      })
+      .then(() => console.log('공부 세션이 백엔드에 저장되었습니다.'))
+      .catch(err => console.error('백엔드 세션 저장 오류:', err));
+  }
+
   sessionPage = Math.ceil(sessions.length / 2);
   const total = getStoredTotal() + elapsedSeconds;
   setStoredTotal(total);
@@ -1481,6 +1507,13 @@ const updateDiscordProfile = ({ user, guild, authorized }) => {
   discordAvatar.classList.remove("status-ok", "status-pending");
   if (authorized === true) {
     discordAvatar.classList.add("status-ok");
+
+    // 백엔드에 사용자 등록/업데이트
+    if (typeof UserAPI !== 'undefined' && user?.id) {
+      UserAPI.upsert(user.id, user.username, user.avatar)
+        .then(() => console.log('사용자 정보가 백엔드에 저장되었습니다.'))
+        .catch(err => console.error('백엔드 사용자 저장 오류:', err));
+    }
   } else if (authorized === false) {
     discordAvatar.classList.add("status-pending");
   }

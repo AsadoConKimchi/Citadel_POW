@@ -25,6 +25,24 @@ npm start
 - `DISCORD_ROLE_ID`
 - `SESSION_SECRET`
 
+## 백엔드 API 연동
+
+프론트엔드는 백엔드 API와 자동으로 연동되어 공부 세션과 기부 데이터를 저장합니다.
+
+백엔드 API URL을 설정하려면 `index.html`에서 다음을 추가하세요:
+
+```html
+<script>
+  window.BACKEND_API_URL = 'https://your-backend-api.workers.dev';
+</script>
+<script src="api.js"></script>
+<script src="app.js"></script>
+```
+
+기본값은 `https://citadel-pow-backend.workers.dev`입니다.
+
+백엔드 레포지토리: [Citadel_POW_BackEND](https://github.com/AsadoConKimchi/Citadel_POW_BackEND)
+
 ## 배포 (Render 기준)
 
 `https://idioma.citadel.sx`로 접속되도록 하려면 **배포 + 커스텀 도메인 연결**이 필요합니다.
