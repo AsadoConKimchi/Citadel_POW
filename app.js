@@ -623,8 +623,13 @@ const finishSession = () => {
 const getDonationHistory = () =>
   JSON.parse(localStorage.getItem(donationHistoryKey) || "[]");
 
+const isPaidEntry = (entry) => entry?.isPaid !== false;
+
 const getTotalDonatedSats = () =>
-  getDonationHistory().reduce((sum, item) => sum + Number(item.sats || 0), 0);
+  getDonationHistory().reduce(
+    (sum, item) => (isPaidEntry(item) ? sum + Number(item.sats || 0) : sum),
+    0
+  );
 
 const renderLeaderboard = ({ element, entries, valueFormatter }) => {
   if (!element) {
@@ -653,6 +658,9 @@ const getDonatedSecondsByScope = ({ scope, dateKey } = {}) => {
   const uniqueSessions = new Set();
   let totalSeconds = 0;
   history.forEach((entry) => {
+    if (!isPaidEntry(entry)) {
+      return;
+    }
     if (scope && entry.scope !== scope) {
       return;
     }
@@ -723,6 +731,77 @@ const calculateSats = ({ rate, seconds }) => {
   const progressRate = getGoalProgress(seconds) / 100;
   return Math.round(rate * progressRate);
 };
+
+const calculateSats = ({ rate, seconds, goalMinutes }) =>
+  calculateSatsForGoal({
+    rate,
+    seconds,
+    goalMinutes: goalMinutes ?? getCurrentGoalMinutes(),
+  });
+
+const getSessionSatsRate = (session) =>
+  parseSatsRate(session?.satsRate ?? satsRateInput?.value);
+
+const calculateSessionAccumulatedSats = (session, secondsOverride) =>
+  calculateSatsForGoal({
+    rate: getSessionSatsRate(session),
+    seconds: secondsOverride ?? Number(session?.durationSeconds || 0),
+    goalMinutes: Number(session?.goalMinutes || 0),
+  });
+
+const getAccumulatedSatsForScope = (scope) => {
+  if (scope === "daily") {
+    const sessions = loadSessions();
+    const total = sessions.reduce(
+      (sum, session) => sum + calculateSessionAccumulatedSats(session),
+      0
+    );
+    const running =
+      elapsedSeconds > 0
+        ? calculateSatsForGoal({
+            rate: parseSatsRate(satsRateInput?.value),
+            seconds: elapsedSeconds,
+            goalMinutes: getCurrentGoalMinutes(),
+          })
+        : 0;
+    return total + running;
+  }
+  if (scope === "total") {
+    const dates = getSessionStorageDates();
+    const savedTotal = dates.reduce((sum, dateKey) => {
+      const sessions = loadSessions(`citadel-sessions-${dateKey}`);
+      const dayTotal = sessions.reduce(
+        (daySum, session) => daySum + calculateSessionAccumulatedSats(session),
+        0
+      );
+      return sum + dayTotal;
+    }, 0);
+    const running =
+      elapsedSeconds > 0
+        ? calculateSatsForGoal({
+            rate: parseSatsRate(satsRateInput?.value),
+            seconds: elapsedSeconds,
+            goalMinutes: getCurrentGoalMinutes(),
+          })
+        : 0;
+    return savedTotal + running;
+  }
+  return 0;
+};
+
+const getDonatedSatsByScope = ({ scope, dateKey } = {}) =>
+  getDonationHistory().reduce((sum, entry) => {
+    if (!isPaidEntry(entry)) {
+      return sum;
+    }
+    if (scope && entry.scope !== scope) {
+      return sum;
+    }
+    if (dateKey && entry.date !== dateKey) {
+      return sum;
+    }
+    return sum + Number(entry.sats || 0);
+  }, 0);
 
 const getDonationSatsForScope = () => {
   const rate = parseSatsRate(satsRateInput?.value);
@@ -820,7 +899,7 @@ const renderDonationHistory = () => {
 };
 
 const updateDonationTotals = () => {
-  const total = getDonationHistory().reduce((sum, item) => sum + (item.sats || 0), 0);
+  const total = getTotalDonatedSats();
   if (satsTotalAllEl) {
     satsTotalAllEl.textContent = `${total} sats`;
   }
@@ -953,6 +1032,7 @@ const saveDonationHistoryEntry = ({
   scope,
   sessionId = "",
   note = "",
+  isPaid = true,
 }) => {
   const history = getDonationHistory();
   history.push({
@@ -964,6 +1044,7 @@ const saveDonationHistoryEntry = ({
     scope,
     sessionId,
     note,
+    isPaid,
   });
   localStorage.setItem(donationHistoryKey, JSON.stringify(history));
   updateDonationTotals();
@@ -1016,6 +1097,7 @@ const promptPendingDailyDonation = async () => {
         mode: entry.mode || "pow-writing",
         scope: "daily",
         note: entry.note || "",
+        isPaid: true,
       });
       delete pending[pendingDate];
       savePendingDaily(pending);
@@ -1125,18 +1207,40 @@ const openLightningWallet = async () => {
   const dataUrl = getBadgeDataUrl();
   const lastSession = getLastSessionSeconds();
   const totalDonatedSats = getTotalDonatedSats() + sats;
+  const totalMinutes = Math.floor(donationSeconds / 60);
+  const mode = donationMode?.value || "pow-writing";
+  const note = donationNote?.value?.trim() || "";
+  const sessionId = scope === "session" ? lastSession.sessionId : "";
   const payload = buildDonationPayload({
     dataUrl,
     plan: lastSession.plan,
     durationSeconds: donationSeconds,
     goalMinutes: lastSession.goalMinutes,
     sats,
-    donationModeValue: donationMode?.value || "pow-writing",
+    donationModeValue: mode,
     donationScopeValue: scope,
-    donationNoteValue: donationNote?.value?.trim() || "",
+    donationNoteValue: note,
     totalDonatedSats,
   });
-  await openLightningWalletWithPayload(payload);
+  await openLightningWalletWithPayload(payload, {
+    onSuccess: () => {
+      saveDonationHistoryEntry({
+        date: todayKey,
+        sats,
+        minutes: totalMinutes,
+        seconds: donationSeconds,
+        mode,
+        scope,
+        sessionId,
+        note,
+        isPaid: true,
+      });
+      if (donationStatus) {
+        donationStatus.textContent = `오늘 ${sats} sats 기부 기록을 저장했습니다.`;
+      }
+      resetShareSection();
+    },
+  });
 };
 
 const openAccumulatedDonationPayment = async () => {
@@ -1177,8 +1281,35 @@ const openAccumulatedDonationPayment = async () => {
         scope: "total",
         sessionId: "",
         note,
+        isPaid: true,
       });
       showAccumulationToast("적립액 기부 요청이 완료되었습니다.");
+      fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, shareContext: "payment" }),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            let errorMessage = "";
+            try {
+              const parsed = await response.clone().json();
+              errorMessage = parsed?.message || "";
+            } catch (error) {
+              errorMessage = await response.text();
+            }
+            throw new Error(errorMessage || "디스코드 공유에 실패했습니다.");
+          }
+          if (shareStatus) {
+            shareStatus.textContent = "기부 완료 메시지를 디스코드에 전송했습니다.";
+          }
+          resetShareSection();
+        })
+        .catch((error) => {
+          if (shareStatus) {
+            shareStatus.textContent = error?.message || "디스코드 공유에 실패했습니다.";
+          }
+        });
     },
   });
 };
@@ -1575,6 +1706,23 @@ const resetMediaPreview = () => {
   cameraVideo.style.display = "none";
 };
 
+const resetShareSection = () => {
+  resetMediaPreview();
+  if (downloadLink) {
+    downloadLink.href = "";
+    downloadLink.style.display = "none";
+  }
+  if (donationNote) {
+    donationNote.value = "";
+  }
+  if (shareStatus) {
+    shareStatus.textContent = "디스코드 공유와 기부 연동은 서버에서 설정해야 합니다.";
+  }
+  if (donationStatus) {
+    donationStatus.textContent = "실제 사토시 전송은 LNURL/지갑 연동이 필요합니다.";
+  }
+};
+
 const readFileAsDataUrl = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1806,6 +1954,7 @@ const shareToDiscordOnly = async () => {
     }
     updateAccumulatedSats();
     showAccumulationToast("현재 적립금액이 갱신되었습니다.");
+    resetShareSection();
   } catch (error) {
     if (shareStatus) {
       shareStatus.textContent = error?.message || "디스코드 공유에 실패했습니다.";
@@ -1847,6 +1996,7 @@ donateButton?.addEventListener("click", () => {
     scope,
     sessionId: scope === "session" ? lastSession.sessionId : "",
     note,
+    isPaid: false,
   });
   donationStatus.textContent = `오늘 ${sats} sats 기부 기록을 저장했습니다.`;
   donationPage = 1;
