@@ -533,12 +533,13 @@ app.get("/auth/discord/callback", async (req, res) => {
     };
     req.session.authorized = authorized;
 
-    if (!authorized) {
-      res.redirect("/?unauthorized=1");
-      return;
-    }
-
-    res.redirect("/");
+    req.session.save(() => {
+      if (!authorized) {
+        res.redirect("/?unauthorized=1");
+        return;
+      }
+      res.redirect("/");
+    });
   } catch (error) {
     res.status(500).send("Discord 인증 중 오류가 발생했습니다.");
   }
