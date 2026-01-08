@@ -1522,7 +1522,7 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
       discordAppLogin.style.display = "inline-flex";
     }
     if (discordWebLogin) {
-      discordWebLogin.style.display = "inline-flex";
+      discordWebLogin.style.display = "none";
     }
     if (allowedServer) {
       allowedServer.textContent = "접속 가능 서버: 확인 실패";
@@ -1557,7 +1557,7 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
       discordAppLogin.style.display = "inline-flex";
     }
     if (discordWebLogin) {
-      discordWebLogin.style.display = "inline-flex";
+      discordWebLogin.style.display = "none";
     }
     if (allowedServer) {
       allowedServer.textContent = "접속 가능 서버: 로그인 필요";

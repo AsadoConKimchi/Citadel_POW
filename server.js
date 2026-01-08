@@ -480,27 +480,7 @@ app.get("/auth/discord/app", (req, res) => {
     res.status(500).send(message);
     return;
   }
-  const appUrl = oauthAppUrl();
-  const webUrl = oauthUrl();
-  res.send(`<!doctype html>
-<html lang="ko">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Discord App Login</title>
-  </head>
-  <body>
-    <p>Discord 앱을 여는 중입니다...</p>
-    <script>
-      const appUrl = ${JSON.stringify(appUrl)};
-      const webUrl = ${JSON.stringify(webUrl)};
-      window.location.href = appUrl;
-      setTimeout(() => {
-        window.location.href = webUrl;
-      }, 1200);
-    </script>
-  </body>
-</html>`);
+  res.redirect(oauthUrl());
 });
 
 app.get("/auth/discord/callback", async (req, res) => {
