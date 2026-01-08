@@ -198,6 +198,17 @@ const getMentionLabel = ({ userId, username }) => {
   return username || "사용자";
 };
 
+const donationModeLabels = {
+  "pow-writing": "✒️ㅣ글쓰기",
+  "pow-music": "🎵ㅣ음악",
+  "pow-study": "📝ㅣ공부",
+  "pow-art": "🎨ㅣ그림",
+  "pow-reading": "📚ㅣ독서",
+  "pow-service": "✝️ㅣ봉사",
+};
+
+const getDonationModeLabel = (mode) => donationModeLabels[mode] || "POW";
+
 const getFileExtension = (mimeType) => {
   if (!mimeType) {
     return "bin";
@@ -254,8 +265,10 @@ const sendDiscordShare = async ({
     throw new Error("이미지 포맷이 올바르지 않습니다.");
   }
   const form = new FormData();
-  const noteLabel = donationNote?.trim() ? `메모: ${donationNote.trim()}` : "메모: 없음";
   const mentionLabel = getMentionLabel({ userId: discordUserId, username });
+  const modeLabel = getDonationModeLabel(donationMode);
+  const noteValue = donationNote?.trim() || "없음";
+  const noteLine = `${mentionLabel}님의 한마디 : "${noteValue}"`;
   const isAccumulatedPayment =
     shareContext === "payment" && donationScope && donationScope === "total";
   const isAccumulatedShare = shareContext === "share" && donationScope === "total";
@@ -264,10 +277,10 @@ const sendDiscordShare = async ({
   const safeTotalAccumulated = Number(totalAccumulatedSats || 0);
   const payload = {
     content: isAccumulatedPayment
-      ? `${mentionLabel}님께서 적립되어있던 **${sats} sats 기부 완료!** 지금까지 총 기부액 **${safeTotalDonated} sats!**`
+      ? `${mentionLabel}님께서 적립되어있던 ${sats} sats 기부 완료!`
       : isAccumulatedShare
-        ? `${mentionLabel}님께서 POW 완료 후, **${safeAccumulated} sats 적립**, 총 적립액 **${safeTotalAccumulated} sats**.`
-        : `${mentionLabel}님께서 POW 완료 후, **${sats} sats 기부 완료!** 지금까지 총 기부액 **${safeTotalDonated} sats!**\n${noteLabel}`,
+        ? `${mentionLabel}님께서 "${modeLabel}"에서 POW 완료 후, ${safeAccumulated} sats 적립! 총 적립액 ${safeTotalAccumulated} sats!\n${noteLine}`
+        : `${mentionLabel}님께서 "${modeLabel}"에서 POW 완료 후, ${sats} sats 기부!\n${noteLine}`,
   };
   form.append("payload_json", JSON.stringify(payload));
   const file = new Blob([parsed.buffer], { type: parsed.mime });
@@ -506,26 +519,37 @@ app.get("/auth/discord/callback", async (req, res) => {
     const roles = member.roles || [];
     const authorized = roles.includes(DISCORD_ROLE_ID);
 
-    req.session.user = {
-      id: user.id,
-      username: user.global_name || user.username,
-      avatar: user.avatar,
-      banner: user.banner,
-    };
-    req.session.guild = {
-      id: DISCORD_GUILD_ID,
-      name: DISCORD_GUILD_NAME,
-      roles,
-      roleName: DISCORD_ROLE_NAME || null,
-    };
-    req.session.authorized = authorized;
+    req.session.regenerate((regenerateError) => {
+      if (regenerateError) {
+        res.status(500).send("Discord 인증 중 오류가 발생했습니다.");
+        return;
+      }
+      req.session.user = {
+        id: user.id,
+        username: user.global_name || user.username,
+        avatar: user.avatar,
+        banner: user.banner,
+      };
+      req.session.guild = {
+        id: DISCORD_GUILD_ID,
+        name: DISCORD_GUILD_NAME,
+        roles,
+        roleName: DISCORD_ROLE_NAME || null,
+      };
+      req.session.authorized = authorized;
 
-    if (!authorized) {
-      res.redirect("/?unauthorized=1");
-      return;
-    }
-
-    res.redirect("/");
+      req.session.save((saveError) => {
+        if (saveError) {
+          res.status(500).send("Discord 인증 중 오류가 발생했습니다.");
+          return;
+        }
+        if (!authorized) {
+          res.redirect("/?unauthorized=1");
+          return;
+        }
+        res.redirect("/");
+      });
+    });
   } catch (error) {
     res.status(500).send("Discord 인증 중 오류가 발생했습니다.");
   }
