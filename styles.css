@@ -1020,34 +1020,34 @@ body.timer-modal-open {
   }
 
   .carousel-viewport {
-    max-height: 400px;
+    max-height: 280px;
   }
 
   .carousel-card {
-    padding: 12px;
-    max-height: 400px;
+    padding: 8px;
+    max-height: 280px;
   }
 
   .pow-badge-image {
-    max-height: 350px;
+    max-height: 260px;
   }
 
   .carousel-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
   }
 
   .pow-text-card {
-    padding: 30px 15px;
-    min-height: 150px;
+    padding: 20px 12px;
+    min-height: 120px;
   }
 
   .pow-text-time {
-    font-size: 24px;
+    font-size: 20px;
   }
 
   .pow-text-plan {
-    font-size: 14px;
+    font-size: 13px;
   }
 }

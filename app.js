@@ -811,9 +811,9 @@ const finishSession = () => {
     let photoDataUrl = null;
     if (typeof getBadgeDataUrl === 'function') {
       photoDataUrl = getBadgeDataUrl();
-      // 인증카드가 생성되지 않았으면 자동 생성
+      // 인증카드가 생성되지 않았으면 자동 생성 (사진 유무와 관계없이)
       if (!photoDataUrl || photoDataUrl === "data:,") {
-        if (typeof drawBadge === 'function' && photoSource) {
+        if (typeof drawBadge === 'function') {
           drawBadge();
           photoDataUrl = getBadgeDataUrl();
         }
@@ -2215,10 +2215,11 @@ cameraCapture?.addEventListener("change", (event) => {
 const drawBadge = (sessionOverride = null) => {
   const context = badgeCanvas.getContext("2d");
   context.clearRect(0, 0, badgeCanvas.width, badgeCanvas.height);
-  context.fillStyle = "#0f172a";
-  context.fillRect(0, 0, badgeCanvas.width, badgeCanvas.height);
 
   if (photoSource) {
+    // 사용자가 찍은 사진이 있으면 배경으로 사용
+    context.fillStyle = "#0f172a";
+    context.fillRect(0, 0, badgeCanvas.width, badgeCanvas.height);
     const ratio = Math.min(
       badgeCanvas.width / photoSource.width,
       badgeCanvas.height / photoSource.height
@@ -2228,6 +2229,14 @@ const drawBadge = (sessionOverride = null) => {
     const x = (badgeCanvas.width - width) / 2;
     const y = (badgeCanvas.height - height) / 2;
     context.drawImage(photoSource, x, y, width, height);
+  } else {
+    // 사진이 없으면 그라디언트 배경 사용
+    const gradient = context.createLinearGradient(0, 0, 0, badgeCanvas.height);
+    gradient.addColorStop(0, "#1e3a8a");  // 진한 파랑
+    gradient.addColorStop(0.5, "#3b82f6"); // 파랑
+    gradient.addColorStop(1, "#60a5fa");   // 밝은 파랑
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, badgeCanvas.width, badgeCanvas.height);
   }
 
   const lastSession = sessionOverride || getLastSessionSeconds();
