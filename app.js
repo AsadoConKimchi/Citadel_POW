@@ -634,7 +634,7 @@ const finishSession = () => {
   const total = getStoredTotal() + elapsedSeconds;
   setStoredTotal(total);
   setLastSessionSeconds({ durationSeconds: elapsedSeconds, goalMinutes, plan, sessionId });
-  if (donationScope?.value === "daily") {
+  if (donationScope?.value === "total") {
     const pending = getPendingDaily();
     const entry = pending[todayKey] || {
       seconds: 0,
@@ -656,13 +656,6 @@ const finishSession = () => {
     entry.mode = donationMode?.value || entry.mode;
     pending[todayKey] = entry;
     savePendingDaily(pending);
-  }
-  if (donationScope?.value === "total") {
-    const rate = parseSatsRate(satsRateInput?.value);
-    const sessionSats = calculateSats({
-      rate,
-      seconds: elapsedSeconds,
-    });
     showAccumulationToast(
       `기부금 * 달성률을 곱해서 ${sessionSats} sats가 적립되었습니다.`
     );
@@ -670,6 +663,8 @@ const finishSession = () => {
   elapsedSeconds = 0;
   updateDisplay();
   updateTotals();
+  updateAccumulatedSats();
+  updateTodayDonationSummary();
   renderSessions();
   finishButton.textContent = "인증 카드 만들기 완료!";
   setTimeout(() => {
