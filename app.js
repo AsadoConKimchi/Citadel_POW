@@ -99,6 +99,24 @@ const donationControls = [
   satsRateInput,
 ];
 
+// 토글 버튼 초기화
+const toggleButtons = document.querySelectorAll('.toggle-button');
+toggleButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    // 모든 버튼에서 active 클래스 제거
+    toggleButtons.forEach(btn => btn.classList.remove('active'));
+    // 클릭한 버튼에 active 클래스 추가
+    button.classList.add('active');
+    // hidden input 값 업데이트
+    const value = button.getAttribute('data-value');
+    if (donationScope) {
+      donationScope.value = value;
+      // 기존 change 이벤트 트리거
+      donationScope.dispatchEvent(new Event('change'));
+    }
+  });
+});
+
 const getDonationScopeValue = () => donationScope?.value || "session";
 
 const updateShareButtonLabel = () => {
@@ -208,7 +226,16 @@ const getGoalProgressFor = (totalSeconds, goalMinutes) => {
   return Math.min(100, (totalSeconds / 60 / goalMinutes) * 100);
 };
 
-const getCurrentGoalMinutes = () => Number(goalInput?.value || 0);
+const parseGoalMinutes = () => {
+  if (!goalInput) {
+    return 0;
+  }
+  const cleaned = String(goalInput.value || "").replace(/[^\d]/g, "");
+  const parsed = Number(cleaned);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const getCurrentGoalMinutes = () => parseGoalMinutes();
 
 const getGoalProgress = (totalSeconds) => getGoalProgressFor(totalSeconds, getCurrentGoalMinutes());
 
@@ -564,7 +591,7 @@ const finishSession = () => {
   }
   pauseTimer();
   const plan = getPlanValue();
-  const goalMinutes = Number(goalInput.value || 0);
+  const goalMinutes = parseGoalMinutes();
   const achieved = goalMinutes > 0 ? elapsedSeconds >= goalMinutes * 60 : false;
   const sessionId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   const sessions = loadSessions();
@@ -1114,7 +1141,7 @@ const promptPendingDailyDonation = async () => {
   }
   const sessionData = {
     durationSeconds: entry.seconds || 0,
-    goalMinutes: entry.goalMinutes || Number(goalInput?.value || 0),
+    goalMinutes: entry.goalMinutes || parseGoalMinutes(),
     plan: entry.plan || `${pendingDate} 누적 POW`,
   };
   drawBadge(sessionData);
@@ -1721,7 +1748,27 @@ resetButton?.addEventListener("click", () => {
   isResetReady = true;
 });
 finishButton?.addEventListener("click", finishSession);
-goalInput?.addEventListener("input", updateTotals);
+// POW 시간 입력 포맷팅
+const formatGoalMinutesInput = () => {
+  if (!goalInput) {
+    return;
+  }
+  // 숫자만 추출
+  const cleaned = String(goalInput.value || "").replace(/[^\d]/g, "");
+  const numeric = Number(cleaned);
+
+  // 숫자가 있으면 "00분" 형식으로 표시, 없으면 빈 문자열
+  if (numeric > 0) {
+    goalInput.value = `${numeric}분`;
+  } else {
+    goalInput.value = "";
+  }
+};
+
+goalInput?.addEventListener("input", () => {
+  formatGoalMinutesInput();
+  updateTotals();
+});
 donationScope?.addEventListener("change", () => {
   updateSats();
   updateShareButtonLabel();
@@ -1855,10 +1902,14 @@ openCameraButton?.addEventListener("click", () => {
 
 mediaUpload?.addEventListener("change", (event) => {
   handleMediaFile(event.target.files[0]);
+  // 두 번째 업로드를 위해 입력 필드 리셋
+  event.target.value = "";
 });
 
 cameraCapture?.addEventListener("change", (event) => {
   handleMediaFile(event.target.files[0]);
+  // 두 번째 업로드를 위해 입력 필드 리셋
+  event.target.value = "";
 });
 
 const drawBadge = (sessionOverride = null) => {
@@ -2000,8 +2051,27 @@ const shareToDiscordOnly = async () => {
     if (shareStatus) {
       shareStatus.textContent = "디스코드 공유를 완료했습니다.";
     }
+
+    // 자동으로 기부 기록 저장
+    const mode = donationMode?.value || "pow-writing";
+    const { sats, seconds: donationSeconds, scope } = getDonationPaymentSnapshot();
+    const totalMinutes = Math.floor(donationSeconds / 60);
+    const note = donationNote?.value?.trim() || "";
+    saveDonationHistoryEntry({
+      date: todayKey,
+      sats: payload.sats,
+      minutes: totalMinutes,
+      seconds: donationSeconds,
+      mode,
+      scope: getDonationScopeValue(),
+      sessionId: scope === "session" ? lastSession.sessionId : "",
+      note,
+      isPaid: false,
+    });
+    donationPage = 1;
+
     updateAccumulatedSats();
-    showAccumulationToast("현재 적립금액이 갱신되었습니다.");
+    showAccumulationToast("디스코드 공유 완료 및 기부 기록이 저장되었습니다.");
     resetShareSection();
   } catch (error) {
     if (shareStatus) {
@@ -2028,27 +2098,6 @@ generateButton?.addEventListener("click", () => {
 
 shareDiscordButton?.addEventListener("click", shareToDiscord);
 todayAccumulatedPay?.addEventListener("click", openAccumulatedDonationPayment);
-
-donateButton?.addEventListener("click", () => {
-  const mode = donationMode?.value || "pow-writing";
-  const { sats, seconds: donationSeconds, scope } = getDonationPaymentSnapshot();
-  const totalMinutes = Math.floor(donationSeconds / 60);
-  const note = donationNote.value.trim();
-  const lastSession = getLastSessionSeconds();
-  saveDonationHistoryEntry({
-    date: todayKey,
-    sats,
-    minutes: totalMinutes,
-    seconds: donationSeconds,
-    mode,
-    scope,
-    sessionId: scope === "session" ? lastSession.sessionId : "",
-    note,
-    isPaid: false,
-  });
-  donationStatus.textContent = `오늘 ${sats} sats 기부 기록을 저장했습니다.`;
-  donationPage = 1;
-});
 
 donationPagePay?.addEventListener("click", () => {
   openLightningWallet();

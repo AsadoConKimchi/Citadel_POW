@@ -50,11 +50,22 @@
     <main class="locked">
       <section class="grid">
         <div class="card">
-          <h2>POW 타이머</h2>
+          <h2>POW</h2>
           <div class="stack">
             <label>
-              POW 시간(단위 : 분)
-              <input id="goal-minutes" type="number" min="1" value="120" />
+              POW 분야 선택
+              <select id="donation-mode">
+                <option value="pow-writing">✒️ㅣ글쓰기</option>
+                <option value="pow-music">🎵ㅣ음악</option>
+                <option value="pow-study">📝ㅣ공부</option>
+                <option value="pow-art">🎨ㅣ그림</option>
+                <option value="pow-reading">📚ㅣ독서</option>
+                <option value="pow-service">✝️ㅣ봉사</option>
+              </select>
+            </label>
+            <label>
+              POW 시간
+              <input id="goal-minutes" type="text" inputmode="numeric" placeholder="예) 30분" />
             </label>
             <label>
               오늘의 목표
@@ -68,21 +79,11 @@
             <p class="muted">사토시 기부 기준을 POW 시작 전에 설정하세요.</p>
             <label>
               기부 방식
-              <select id="donation-scope">
-                <option value="session">회차 별 기부</option>
-                <option value="total">누적 후 한번에 기부</option>
-              </select>
-            </label>
-            <label>
-              POW 분야 선택
-              <select id="donation-mode">
-                <option value="pow-writing">✒️ㅣ글쓰기</option>
-                <option value="pow-music">🎵ㅣ음악</option>
-                <option value="pow-study">📝ㅣ공부</option>
-                <option value="pow-art">🎨ㅣ그림</option>
-                <option value="pow-reading">📚ㅣ독서</option>
-                <option value="pow-service">✝️ㅣ봉사</option>
-              </select>
+              <div class="toggle-group">
+                <button type="button" class="toggle-button active" data-value="session">즉시기부</button>
+                <button type="button" class="toggle-button" data-value="total">적립후기부</button>
+              </div>
+              <input type="hidden" id="donation-scope" value="session" />
             </label>
             <label>
               목표 달성시 기부금
@@ -140,12 +141,10 @@
               기부 메모 (선택)
               <input id="donation-note" placeholder="예: 누적 POW 2시간 달성" />
             </label>
-            <button id="share-discord" class="primary">디스코드에 공유 &amp; 사토시 기부</button>
-            <button id="donate" class="primary">기부 기록 저장</button>
+            <button id="share-discord" class="primary">디스코드에 공유</button>
             <p class="hint" id="share-status">
-              디스코드 공유와 기부 연동은 서버에서 설정해야 합니다.
+              디스코드 공유 시 자동으로 기부 기록이 저장됩니다.
             </p>
-            <p class="hint" id="donation-status">실제 사토시 전송은 LNURL/지갑 연동이 필요합니다.</p>
           </div>
         </div>
 
