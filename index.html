@@ -72,7 +72,7 @@
               <textarea
                 id="study-plan"
                 rows="3"
-                placeholder="예: 스페인어 회화 2과 복습 + 단어 20개 암기"
+                placeholder="예시) 비트코인 필독서 12권 중 1권 읽기"
               ></textarea>
             </label>
             <p class="hint" id="plan-status">목표는 자동 저장됩니다.</p>
@@ -201,6 +201,10 @@
           <button class="wallet-option" data-wallet="zeus">Zeus</button>
         </div>
         <p class="hint" id="wallet-status">선택한 지갑으로 인보이스를 전달합니다.</p>
+        <div class="wallet-modal__footer hidden" id="wallet-payment-confirm">
+          <p class="hint">결제를 완료하셨나요?</p>
+          <button class="primary" id="wallet-confirm-button">결제 완료 및 디스코드 공유</button>
+        </div>
       </div>
     </div>
 

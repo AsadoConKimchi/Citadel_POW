@@ -76,6 +76,8 @@ const accumulationToast = document.getElementById("accumulation-toast");
 const accumulationToastMessage = document.getElementById("accumulation-toast-message");
 const accumulationToastClose = accumulationToast?.querySelector(".toast-close");
 const timerAccumulatedNote = document.getElementById("timer-accumulated-note");
+const walletPaymentConfirm = document.getElementById("wallet-payment-confirm");
+const walletConfirmButton = document.getElementById("wallet-confirm-button");
 
 let timerInterval = null;
 let elapsedSeconds = 0;
@@ -88,6 +90,7 @@ let mediaPreviewUrl = null;
 let selectedVideoDataUrl = null;
 let selectedVideoFilename = "";
 let latestDonationPayload = null;
+let accumulatedDonationContext = null; // 적립액 기부 컨텍스트 (결제 완료 후 처리용)
 let sessionPage = 1;
 let donationPage = 1;
 let donationHistoryPage = 1;
@@ -1593,55 +1596,27 @@ const openAccumulatedDonationPayment = async () => {
     donationNoteValue: note,
     totalDonatedSats,
   });
-  await openLightningWalletWithPayload(payload, {
-    onSuccess: () => {
-      saveDonationHistoryEntry({
-        date: todayKey,
-        sats,
-        minutes: totalMinutes,
-        seconds: donationSeconds,
-        mode,
-        scope: "total",
-        sessionId: "",
-        note,
-        isPaid: true,
-      });
 
-      showAccumulationToast("적립액 기부 요청이 완료되었습니다.");
-      fetch("/api/share", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, shareContext: "payment" }),
-      })
-        .then(async (response) => {
-          if (!response.ok) {
-            let errorMessage = "";
-            try {
-              const parsed = await response.clone().json();
-              errorMessage = parsed?.message || "";
-            } catch (error) {
-              errorMessage = await response.text();
-            }
-            throw new Error(errorMessage || "디스코드 공유에 실패했습니다.");
-          }
+  // 적립액 기부 컨텍스트 저장 (결제 완료 후 사용)
+  accumulatedDonationContext = {
+    payload,
+    sats,
+    totalMinutes,
+    donationSeconds,
+    mode,
+    note,
+  };
 
-          // 디스코드 공유 성공 후 pending daily 삭제
-          const pending = getPendingDaily();
-          delete pending[todayKey];
-          savePendingDaily(pending);
+  // onSuccess 없이 인보이스만 생성
+  await openLightningWalletWithPayload(payload);
 
-          showAccumulationToast("기부 완료! 페이지를 새로고침합니다...");
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
-        })
-        .catch((error) => {
-          if (shareStatus) {
-            shareStatus.textContent = error?.message || "디스코드 공유에 실패했습니다.";
-          }
-        });
-    },
-  });
+  // 지갑 모달에 "결제 완료 확인" 버튼 표시
+  if (walletPaymentConfirm) {
+    walletPaymentConfirm.classList.remove("hidden");
+  }
+  if (walletStatus) {
+    walletStatus.textContent = "지갑에서 결제를 완료한 후 아래 버튼을 눌러주세요.";
+  }
 };
 
 const buildLightningUri = (invoice) => `lightning:${invoice}`;
@@ -1739,6 +1714,11 @@ const closeWalletSelection = () => {
   if (walletToast) {
     walletToast.classList.add("hidden");
   }
+  // 적립액 기부 확인 버튼 숨기기
+  if (walletPaymentConfirm) {
+    walletPaymentConfirm.classList.add("hidden");
+  }
+  accumulatedDonationContext = null;
 };
 
 const launchWallet = async (walletKey) => {
@@ -2362,7 +2342,10 @@ const shareToDiscordOnly = async () => {
       donationPage = 1;
     }
 
-    // 디스코드 공유 성공 후 페이지 새로고침으로 모든 상태 업데이트
+    // 디스코드 공유 성공 후 오늘의 목표 초기화
+    localStorage.removeItem(planKey);
+
+    // 페이지 새로고침으로 모든 상태 업데이트
     showAccumulationToast("디스코드 공유가 완료되었습니다. 페이지를 새로고침합니다...");
     setTimeout(() => {
       window.location.reload();
@@ -2451,6 +2434,70 @@ const copyWalletInvoice = async () => {
 };
 
 walletInvoiceQr?.addEventListener("click", copyWalletInvoice);
+
+// 적립액 기부 결제 완료 확인 버튼
+walletConfirmButton?.addEventListener("click", async () => {
+  if (!accumulatedDonationContext) {
+    return;
+  }
+
+  const { payload, sats, totalMinutes, donationSeconds, mode, note } = accumulatedDonationContext;
+
+  // 지갑 모달 닫기
+  closeWalletSelection();
+
+  // 로딩 표시
+  showAccumulationToast("디스코드에 공유 중입니다...");
+
+  try {
+    // 기부 기록 저장
+    await saveDonationHistoryEntry({
+      date: todayKey,
+      sats,
+      minutes: totalMinutes,
+      seconds: donationSeconds,
+      mode,
+      scope: "total",
+      sessionId: "",
+      note,
+      isPaid: true,
+    });
+
+    // 디스코드 공유
+    const response = await fetch("/api/share", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...payload, shareContext: "payment" }),
+    });
+
+    if (!response.ok) {
+      let errorMessage = "";
+      try {
+        const parsed = await response.clone().json();
+        errorMessage = parsed?.message || "";
+      } catch (error) {
+        errorMessage = await response.text();
+      }
+      throw new Error(errorMessage || "디스코드 공유에 실패했습니다.");
+    }
+
+    // 디스코드 공유 성공 후 pending daily 삭제
+    const pending = getPendingDaily();
+    delete pending[todayKey];
+    await savePendingDaily(pending);
+
+    // 오늘의 목표 초기화
+    localStorage.removeItem(planKey);
+
+    showAccumulationToast("기부 완료! 페이지를 새로고침합니다...");
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  } catch (error) {
+    showAccumulationToast(error?.message || "디스코드 공유에 실패했습니다.");
+  }
+});
+
 accumulationToastClose?.addEventListener("click", () => {
   accumulationToast?.classList.add("hidden");
 });
