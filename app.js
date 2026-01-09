@@ -87,6 +87,7 @@ let photoSource = null;
 let mediaPreviewUrl = null;
 let selectedVideoDataUrl = null;
 let selectedVideoFilename = "";
+let defaultBackgroundImage = null;
 let latestDonationPayload = null;
 let sessionPage = 1;
 let donationPage = 1;
@@ -2216,21 +2217,24 @@ const drawBadge = (sessionOverride = null) => {
   const context = badgeCanvas.getContext("2d");
   context.clearRect(0, 0, badgeCanvas.width, badgeCanvas.height);
 
-  if (photoSource) {
-    // 사용자가 찍은 사진이 있으면 배경으로 사용
+  // 배경 이미지 결정: 사용자 사진 > 기본 배경 이미지 > 그라디언트
+  const backgroundImage = photoSource || defaultBackgroundImage;
+
+  if (backgroundImage) {
+    // 사용자가 찍은 사진이나 기본 배경 이미지가 있으면 배경으로 사용
     context.fillStyle = "#0f172a";
     context.fillRect(0, 0, badgeCanvas.width, badgeCanvas.height);
     const ratio = Math.min(
-      badgeCanvas.width / photoSource.width,
-      badgeCanvas.height / photoSource.height
+      badgeCanvas.width / backgroundImage.width,
+      badgeCanvas.height / backgroundImage.height
     );
-    const width = photoSource.width * ratio;
-    const height = photoSource.height * ratio;
+    const width = backgroundImage.width * ratio;
+    const height = backgroundImage.height * ratio;
     const x = (badgeCanvas.width - width) / 2;
     const y = (badgeCanvas.height - height) / 2;
-    context.drawImage(photoSource, x, y, width, height);
+    context.drawImage(backgroundImage, x, y, width, height);
   } else {
-    // 사진이 없으면 그라디언트 배경 사용
+    // 아무 이미지도 없으면 그라디언트 배경 사용
     const gradient = context.createLinearGradient(0, 0, 0, badgeCanvas.height);
     gradient.addColorStop(0, "#1e3a8a");  // 진한 파랑
     gradient.addColorStop(0.5, "#3b82f6"); // 파랑
@@ -2514,6 +2518,20 @@ const loadSession = async ({ ignoreUrlFlag = false } = {}) => {
   }
 };
 
+// 기본 배경 이미지 로드
+const loadDefaultBackgroundImage = () => {
+  const img = new Image();
+  img.onload = () => {
+    defaultBackgroundImage = img;
+    console.log("기본 배경 이미지 로드 완료");
+  };
+  img.onerror = () => {
+    console.warn("기본 배경 이미지 로드 실패 - 그라디언트 사용");
+  };
+  img.src = "default-background.jpg";
+};
+
+loadDefaultBackgroundImage();
 loadSession();
 promptPendingDailyDonation();
 if (discordRefresh) {
