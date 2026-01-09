@@ -72,16 +72,24 @@ const UserAPI = {
 const StudySessionAPI = {
   // 공부 세션 생성
   async create(discordId, sessionData) {
+    const payload = {
+      discord_id: discordId,
+      start_time: sessionData.startTime,
+      end_time: sessionData.endTime,
+      duration_minutes: sessionData.durationMinutes,
+    };
+
+    // optional 필드는 값이 있을 때만 포함
+    if (sessionData.planText) {
+      payload.plan_text = sessionData.planText;
+    }
+    if (sessionData.photoUrl) {
+      payload.photo_url = sessionData.photoUrl;
+    }
+
     return apiRequest('/api/study-sessions', {
       method: 'POST',
-      body: JSON.stringify({
-        discord_id: discordId,
-        start_time: sessionData.startTime,
-        end_time: sessionData.endTime,
-        duration_minutes: sessionData.durationMinutes,
-        plan_text: sessionData.planText || '',
-        photo_url: sessionData.photoUrl || null,
-      }),
+      body: JSON.stringify(payload),
     });
   },
 
@@ -91,13 +99,23 @@ const StudySessionAPI = {
       method: 'POST',
       body: JSON.stringify({
         discord_id: discordId,
-        sessions: sessions.map(s => ({
-          start_time: s.startTime,
-          end_time: s.endTime,
-          duration_minutes: s.durationMinutes,
-          plan_text: s.planText,
-          photo_url: s.photoUrl,
-        })),
+        sessions: sessions.map(s => {
+          const session = {
+            start_time: s.startTime,
+            end_time: s.endTime,
+            duration_minutes: s.durationMinutes,
+          };
+
+          // optional 필드는 값이 있을 때만 포함
+          if (s.planText) {
+            session.plan_text = s.planText;
+          }
+          if (s.photoUrl) {
+            session.photo_url = s.photoUrl;
+          }
+
+          return session;
+        }),
       }),
     });
   },
