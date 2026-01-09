@@ -267,11 +267,7 @@ const sendDiscordShare = async ({
   if (!DISCORD_WEBHOOK_URL) {
     throw new Error("DISCORD_WEBHOOK_URL이 설정되지 않았습니다.");
   }
-  const parsed = parseDataUrl(dataUrl);
-  if (!parsed) {
-    throw new Error("이미지 포맷이 올바르지 않습니다.");
-  }
-  const form = new FormData();
+
   const mentionLabel = getMentionLabel({ userId: discordUserId, username });
   const modeLabel = getDonationModeLabel(donationMode);
   const noteValue = donationNote?.trim() || "없음";
@@ -282,6 +278,17 @@ const sendDiscordShare = async ({
   const safeTotalDonated = Number(totalDonatedSats || 0);
   const safeAccumulated = Number(accumulatedSats || 0);
   const safeTotalAccumulated = Number(totalAccumulatedSats || 0);
+
+  // 적립액 기부가 아닌 경우에만 이미지 파싱 필수
+  let parsed = null;
+  if (!isAccumulatedPayment) {
+    parsed = parseDataUrl(dataUrl);
+    if (!parsed) {
+      throw new Error("이미지 포맷이 올바르지 않습니다.");
+    }
+  }
+
+  const form = new FormData();
   const payload = {
     content: isAccumulatedPayment
       ? `${mentionLabel}님께서 적립해 두었던, ${sats}sats 기부 완료! 총 기부액 ${safeTotalDonated}sats!`
@@ -292,7 +299,7 @@ const sendDiscordShare = async ({
   form.append("payload_json", JSON.stringify(payload));
 
   // 적립액 기부(payment)가 아닐 때만 이미지와 동영상 첨부
-  if (!isAccumulatedPayment) {
+  if (!isAccumulatedPayment && parsed) {
     const file = new Blob([parsed.buffer], { type: parsed.mime });
     form.append("files[0]", file, "citadel_idioma_badge.png");
 
@@ -902,16 +909,23 @@ app.post("/api/share", async (req, res) => {
     donationNote,
     videoDataUrl,
     videoFilename,
+    shareContext,
   } = req.body || {};
-  if (!dataUrl) {
-    res.status(400).json({ message: "공유할 이미지가 없습니다." });
-    return;
-  }
 
-  const parsed = parseDataUrl(dataUrl);
-  if (!parsed) {
-    res.status(400).json({ message: "이미지 포맷이 올바르지 않습니다." });
-    return;
+  const isAccumulatedPayment = shareContext === "payment" && donationScope === "total";
+
+  // 적립액 기부가 아닌 경우에만 dataUrl 필수 체크
+  if (!isAccumulatedPayment) {
+    if (!dataUrl) {
+      res.status(400).json({ message: "공유할 이미지가 없습니다." });
+      return;
+    }
+
+    const parsed = parseDataUrl(dataUrl);
+    if (!parsed) {
+      res.status(400).json({ message: "이미지 포맷이 올바르지 않습니다." });
+      return;
+    }
   }
 
   try {
@@ -941,7 +955,7 @@ app.post("/api/share", async (req, res) => {
       discordUserId,
       videoDataUrl,
       videoFilename,
-      shareContext: "share",
+      shareContext: shareContext || "share",
     });
 
     res.json({ message: "디스코드 공유를 완료했습니다." });

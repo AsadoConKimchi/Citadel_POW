@@ -1817,8 +1817,10 @@ const formatGoalMinutesInput = () => {
 };
 
 goalInput?.addEventListener("input", () => {
-  formatGoalMinutesInput();
   updateTotals();
+});
+goalInput?.addEventListener("blur", () => {
+  formatGoalMinutesInput();
 });
 donationScope?.addEventListener("change", () => {
   updateSats();
