@@ -2426,10 +2426,7 @@ const shareToDiscord = async () => {
 };
 
 generateButton?.addEventListener("click", () => {
-  if (!photoSource) {
-    alert("먼저 사진 또는 동영상을 촬영하거나 업로드해주세요.");
-    return;
-  }
+  // photoSource가 없어도 기본 배경 이미지로 인증카드 생성
   drawBadge();
 });
 
@@ -2539,12 +2536,14 @@ const loadDefaultBackgroundImage = () => {
   const img = new Image();
   img.onload = () => {
     defaultBackgroundImage = img;
-    console.log("기본 배경 이미지 로드 완료");
+    console.log("✅ 기본 배경 이미지 로드 완료:", img.src, "크기:", img.width, "x", img.height);
   };
-  img.onerror = () => {
-    console.warn("기본 배경 이미지 로드 실패 - 그라디언트 사용");
+  img.onerror = (e) => {
+    console.error("❌ 기본 배경 이미지 로드 실패:", img.src, e);
+    console.warn("⚠️ 그라디언트 배경을 사용합니다.");
   };
-  img.src = "default-background.jpg";
+  img.src = "./default-background.jpg";
+  console.log("🔄 기본 배경 이미지 로드 시작:", img.src);
 };
 
 loadDefaultBackgroundImage();
