@@ -107,36 +107,42 @@ const donationScopeKey = 'citadel-donation-scope';
 
 // 저장된 토글 상태 복원
 const savedDonationScope = localStorage.getItem(donationScopeKey) || 'session';
-toggleButtons.forEach(button => {
-  const value = button.getAttribute('data-value');
-  if (value === savedDonationScope) {
-    button.classList.add('active');
-    if (donationScope) {
-      donationScope.value = value;
-    }
-  } else {
-    button.classList.remove('active');
-  }
-});
 
-// 토글 버튼 클릭 이벤트
-toggleButtons.forEach(button => {
-  button.addEventListener('click', () => {
-    // 모든 버튼에서 active 클래스 제거
-    toggleButtons.forEach(btn => btn.classList.remove('active'));
-    // 클릭한 버튼에 active 클래스 추가
-    button.classList.add('active');
-    // hidden input 값 업데이트
+// donationScope input이 있으면 값 설정
+if (donationScope) {
+  donationScope.value = savedDonationScope;
+}
+
+// 토글 버튼이 있으면 초기화
+if (toggleButtons.length > 0) {
+  toggleButtons.forEach(button => {
     const value = button.getAttribute('data-value');
-    if (donationScope) {
-      donationScope.value = value;
-      // localStorage에 저장
-      localStorage.setItem(donationScopeKey, value);
-      // 기존 change 이벤트 트리거
-      donationScope.dispatchEvent(new Event('change'));
+    if (value === savedDonationScope) {
+      button.classList.add('active');
+    } else {
+      button.classList.remove('active');
     }
   });
-});
+
+  // 토글 버튼 클릭 이벤트
+  toggleButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      // 모든 버튼에서 active 클래스 제거
+      toggleButtons.forEach(btn => btn.classList.remove('active'));
+      // 클릭한 버튼에 active 클래스 추가
+      button.classList.add('active');
+      // hidden input 값 업데이트
+      const value = button.getAttribute('data-value');
+      if (donationScope) {
+        donationScope.value = value;
+        // localStorage에 저장
+        localStorage.setItem(donationScopeKey, value);
+        // 기존 change 이벤트 트리거
+        donationScope.dispatchEvent(new Event('change'));
+      }
+    });
+  });
+}
 
 const getDonationScopeValue = () => donationScope?.value || "session";
 
@@ -894,6 +900,13 @@ const getDonatedSatsByScope = ({ scope, dateKey } = {}) =>
   }, 0);
 
 const getDonationSatsForScope = () => {
+  // 적립 후 기부 모드: pending daily에 저장된 sats 직접 사용
+  if (getDonationScopeValue() === "total") {
+    const pending = getPendingDaily();
+    const entry = pending[todayKey];
+    return entry ? entry.sats : 0;
+  }
+
   const rate = parseSatsRate(satsRateInput?.value);
   return calculateSats({
     rate,
@@ -1981,7 +1994,8 @@ const drawBadge = (sessionOverride = null) => {
   context.fillText("오늘의 POW 인증", 60, badgeCanvas.height - overlayHeight + 90);
 
   context.font = "bold 36px sans-serif";
-  const plan = lastSession.plan || "목표 미입력";
+  // studyPlanPreview 값이 있으면 사용, 없으면 lastSession.plan 사용
+  const plan = (studyPlanPreview?.value?.trim() || lastSession.plan) || "목표 미입력";
   context.fillText(`목표: ${plan}`, 60, badgeCanvas.height - overlayHeight + 150);
 
   context.font = "32px sans-serif";
