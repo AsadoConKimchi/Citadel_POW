@@ -87,6 +87,8 @@ const StudySessionAPI = {
       payload.photo_url = sessionData.photoUrl;
     }
 
+    console.log('📤 공부 세션 페이로드:', payload);
+
     return apiRequest('/api/study-sessions', {
       method: 'POST',
       body: JSON.stringify(payload),
