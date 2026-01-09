@@ -71,16 +71,16 @@ const UserAPI = {
  */
 const StudySessionAPI = {
   // 공부 세션 생성
-  async create(discordId, session) {
+  async create(discordId, sessionData) {
     return apiRequest('/api/study-sessions', {
       method: 'POST',
       body: JSON.stringify({
         discord_id: discordId,
-        start_time: session.startTime,
-        end_time: session.endTime,
-        duration_minutes: session.durationMinutes,
-        plan_text: session.planText,
-        photo_url: session.photoUrl,
+        start_time: sessionData.startTime,
+        end_time: sessionData.endTime,
+        duration_minutes: sessionData.durationMinutes,
+        plan_text: sessionData.planText || '',
+        photo_url: sessionData.photoUrl || null,
       }),
     });
   },
