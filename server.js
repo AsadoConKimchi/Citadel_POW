@@ -19,13 +19,15 @@ const {
   DISCORD_ROLE_ID,
   DISCORD_ROLE_NAME,
   DISCORD_GUILD_NAME = "citadel.sx",
-  DISCORD_WEBHOOK_URL,
-  BLINK_LIGHTNING_ADDRESS,
-  BLINK_API_ENDPOINT,
-  BLINK_API_KEY,
   SESSION_SECRET,
   PORT = 3000,
 } = process.env;
+
+// NOTE: 아래 환경변수들은 Cloudflare Workers로 이동되었습니다
+// - DISCORD_WEBHOOK_URL
+// - BLINK_LIGHTNING_ADDRESS
+// - BLINK_API_ENDPOINT
+// - BLINK_API_KEY
 
 const discordClientId = (DISCORD_CLIENT_ID || "").trim();
 const discordClientSecret = (DISCORD_CLIENT_SECRET || "").trim();
