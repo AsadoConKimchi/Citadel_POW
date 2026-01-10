@@ -1,7 +1,7 @@
 // Citadel POW Backend API 통신 유틸리티
 
 // 백엔드 API URL (환경 변수 또는 기본값)
-const API_BASE_URL = window.BACKEND_API_URL || 'https://citadel-pow-backend.workers.dev';
+const API_BASE_URL = window.BACKEND_API_URL || 'https://citadel-pow-backend.magadenuevo2025.workers.dev';
 
 /**
  * API 요청 헬퍼 함수

@@ -2467,7 +2467,7 @@ const shareToDiscordOnly = async () => {
 
   try {
     // 백엔드 API를 통해 Discord에 전송
-    const response = await fetch("/api/discord-posts/share", {
+    const response = await fetch("https://citadel-pow-backend.magadenuevo2025.workers.dev/api/discord-posts/share", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(botPayload),
