@@ -35,6 +35,81 @@ let currentRankingType = "time"; // 'time' | 'donation'
 let currentUser = null;
 
 // ============================================
+// 함수 선언 (호이스팅을 위해 먼저 배치)
+// ============================================
+
+/**
+ * 대시보드 타이틀 업데이트
+ */
+function updateDashboardTitle() {
+  const categoryName = getCategoryName(currentCategory);
+  const typeName = currentRankingType === "time" ? "POW 시간" : "기부 금액";
+
+  if (currentCategory === "all") {
+    dashboardLeaderboardTitle.textContent = `${typeName} TOP 5`;
+  } else {
+    dashboardLeaderboardTitle.textContent = `${categoryName} ${typeName} TOP 5`;
+  }
+}
+
+/**
+ * 인기 기록 카드 렌더링 함수
+ * @param {Object} post - 인기 게시물 데이터
+ * @param {number} index - 인덱스
+ * @param {number} currentIndex - 현재 활성화된 인덱스
+ * @returns {string} HTML 문자열
+ */
+function renderPopularCard(post, index, currentIndex) {
+  const isActive = index === currentIndex;
+  const photoUrl = post.photo_url;
+  const reactionCount = post.reaction_count || 0;
+  const username = post.discord_username || "알 수 없음";
+  const minutes = post.duration_minutes || 0;
+  const plan = post.plan_text || "계획 없음";
+  const rank = index + 1;
+
+  // 메달 표시
+  let rankBadge = `#${rank}`;
+  if (rank === 1) rankBadge = "🥇";
+  else if (rank === 2) rankBadge = "🥈";
+  else if (rank === 3) rankBadge = "🥉";
+
+  if (photoUrl && photoUrl !== "data:,") {
+    // 인증카드 이미지가 있으면 이미지 표시
+    return `
+      <div class="carousel-card ${isActive ? 'active' : ''}" data-index="${index}">
+        <div class="popular-card-header">
+          <span class="popular-rank">${rankBadge}</span>
+          <span class="popular-reactions">❤️ ${formatNumber(reactionCount)}</span>
+        </div>
+        <img src="${photoUrl}" alt="POW 인증카드" class="pow-badge-image" loading="lazy" />
+        <div class="popular-card-footer">
+          <span class="popular-username">${username}</span>
+          <span class="popular-time">${minutes}분</span>
+        </div>
+      </div>
+    `;
+  } else {
+    // 인증카드 이미지가 없으면 텍스트 표시
+    return `
+      <div class="carousel-card ${isActive ? 'active' : ''}" data-index="${index}">
+        <div class="pow-text-card">
+          <div class="popular-card-header">
+            <span class="popular-rank">${rankBadge}</span>
+            <span class="popular-reactions">❤️ ${formatNumber(reactionCount)}</span>
+          </div>
+          <div class="pow-text-time">${minutes}분</div>
+          <div class="pow-text-plan">${plan}</div>
+          <div class="popular-card-footer">
+            <span class="popular-username">${username}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// ============================================
 // 컴포넌트 초기화
 // ============================================
 
@@ -108,20 +183,6 @@ async function loadDashboard() {
   }
 }
 
-/**
- * 대시보드 타이틀 업데이트
- */
-const updateDashboardTitle = () => {
-  const categoryName = getCategoryName(currentCategory);
-  const typeName = currentRankingType === "time" ? "POW 시간" : "기부 금액";
-
-  if (currentCategory === "all") {
-    dashboardLeaderboardTitle.textContent = `${typeName} TOP 5`;
-  } else {
-    dashboardLeaderboardTitle.textContent = `${categoryName} ${typeName} TOP 5`;
-  }
-};
-
 // ============================================
 // 인기 기록 로드
 // ============================================
@@ -162,63 +223,6 @@ async function loadPopularRecords() {
     popularRecordsEmpty.textContent = "데이터를 불러올 수 없습니다.";
   }
 }
-
-/**
- * 인기 기록 카드 렌더링 함수
- * @param {Object} post - 인기 게시물 데이터
- * @param {number} index - 인덱스
- * @param {number} currentIndex - 현재 활성화된 인덱스
- * @returns {string} HTML 문자열
- */
-const renderPopularCard = (post, index, currentIndex) => {
-  const isActive = index === currentIndex;
-  const photoUrl = post.photo_url;
-  const reactionCount = post.reaction_count || 0;
-  const username = post.discord_username || "알 수 없음";
-  const minutes = post.duration_minutes || 0;
-  const plan = post.plan_text || "계획 없음";
-  const rank = index + 1;
-
-  // 메달 표시
-  let rankBadge = `#${rank}`;
-  if (rank === 1) rankBadge = "🥇";
-  else if (rank === 2) rankBadge = "🥈";
-  else if (rank === 3) rankBadge = "🥉";
-
-  if (photoUrl && photoUrl !== "data:,") {
-    // 인증카드 이미지가 있으면 이미지 표시
-    return `
-      <div class="carousel-card ${isActive ? 'active' : ''}" data-index="${index}">
-        <div class="popular-card-header">
-          <span class="popular-rank">${rankBadge}</span>
-          <span class="popular-reactions">❤️ ${formatNumber(reactionCount)}</span>
-        </div>
-        <img src="${photoUrl}" alt="POW 인증카드" class="pow-badge-image" loading="lazy" />
-        <div class="popular-card-footer">
-          <span class="popular-username">${username}</span>
-          <span class="popular-time">${minutes}분</span>
-        </div>
-      </div>
-    `;
-  } else {
-    // 인증카드 이미지가 없으면 텍스트 표시
-    return `
-      <div class="carousel-card ${isActive ? 'active' : ''}" data-index="${index}">
-        <div class="pow-text-card">
-          <div class="popular-card-header">
-            <span class="popular-rank">${rankBadge}</span>
-            <span class="popular-reactions">❤️ ${formatNumber(reactionCount)}</span>
-          </div>
-          <div class="pow-text-time">${minutes}분</div>
-          <div class="pow-text-plan">${plan}</div>
-          <div class="popular-card-footer">
-            <span class="popular-username">${username}</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-};
 
 // ============================================
 // 이벤트 리스너
