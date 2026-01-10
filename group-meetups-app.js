@@ -8,26 +8,12 @@
 // ============================================
 
 /**
- * Organizer 역할 설정
+ * Organizer 역할 확인
  *
- * 여러 방법으로 설정 가능:
- * 1. Discord 역할 ID 사용 (권장)
- * 2. 특정 Discord 사용자 ID 사용
- * 3. 모두 허용 (개발/테스트용)
+ * NOTE: Organizer 역할은 Render 서버의 환경변수 ORGANIZER_ROLE_IDS에서 관리됩니다.
+ * 프론트엔드는 세션 응답의 isOrganizer 필드를 사용합니다.
+ * 실제 권한 검증은 백엔드 API에서 수행됩니다.
  */
-const ORGANIZER_CONFIG = {
-  // 방법 1: Discord 역할 ID (서버 설정 > 역할에서 확인 가능)
-  // 예: '1234567890'
-  roleIds: [],
-
-  // 방법 2: 특정 Discord 사용자 ID
-  // 예: ['987654321', '123456789']
-  discordIds: [],
-
-  // 방법 3: 모두 허용 (개발/테스트용)
-  // true로 설정하면 모든 사용자가 Organizer가 됩니다
-  allowAll: true,
-};
 
 // 전역 변수
 let currentUser = null;
@@ -40,7 +26,7 @@ let currentStatus = 'scheduled';
  */
 async function getDiscordSession() {
   try {
-    const response = await fetch('/session');
+    const response = await fetch('/api/session');
     if (response.ok) {
       const data = await response.json();
       return data;
@@ -59,7 +45,7 @@ async function initialize() {
   // Discord 세션 확인
   const session = await getDiscordSession();
 
-  if (!session || !session.user) {
+  if (!session || !session.authenticated || !session.user) {
     // 로그인 필요 표시
     const loginRequired = document.getElementById('login-required');
     if (loginRequired) {
@@ -87,8 +73,8 @@ async function initialize() {
     console.error('사용자 등록 오류:', error);
   }
 
-  // Organizer 여부 확인
-  const isOrganizer = checkOrganizerRole(currentUser.roles, currentUser.discord_id);
+  // Organizer 여부 확인 (세션에서 제공)
+  const isOrganizer = session.isOrganizer || false;
 
   // UI 초기화
   initializeUI(isOrganizer);
@@ -97,33 +83,6 @@ async function initialize() {
   await checkPendingDonations();
 }
 
-/**
- * Organizer 역할 확인
- *
- * 참고: 이 함수는 UI 표시 목적으로만 사용됩니다.
- * 실제 권한 검증은 백엔드 API에서 수행됩니다.
- */
-function checkOrganizerRole(roles, discordId) {
-  // 방법 3: 모두 허용
-  if (ORGANIZER_CONFIG.allowAll) {
-    return true;
-  }
-
-  // 방법 2: 특정 Discord 사용자 ID 확인
-  if (ORGANIZER_CONFIG.discordIds.length > 0 && discordId) {
-    if (ORGANIZER_CONFIG.discordIds.includes(discordId)) {
-      return true;
-    }
-  }
-
-  // 방법 1: Discord 역할 ID 확인
-  if (ORGANIZER_CONFIG.roleIds.length > 0 && roles && roles.length > 0) {
-    return roles.some((roleId) => ORGANIZER_CONFIG.roleIds.includes(roleId));
-  }
-
-  // 설정되지 않았으면 거부
-  return false;
-}
 
 /**
  * UI 초기화

@@ -22,6 +22,7 @@ const {
   SESSION_SECRET,
   PORT = 3000,
   DISCORD_WEBHOOK_URL,
+  ORGANIZER_ROLE_IDS,
 } = process.env;
 
 // NOTE: 아래 환경변수들은 Cloudflare Workers로 이동되었습니다
@@ -657,9 +658,19 @@ app.get("/auth/discord/callback", async (req, res) => {
 
 app.get("/api/session", (req, res) => {
   const authenticated = Boolean(req.session.user);
+
+  // Organizer 역할 확인
+  let isOrganizer = false;
+  if (authenticated && ORGANIZER_ROLE_IDS) {
+    const organizerRoleIds = ORGANIZER_ROLE_IDS.split(',').map(id => id.trim()).filter(id => id.length > 0);
+    const userRoles = req.session.guild?.roles || [];
+    isOrganizer = organizerRoleIds.some(roleId => userRoles.includes(roleId));
+  }
+
   res.json({
     authenticated,
     authorized: authenticated ? Boolean(req.session.authorized) : false,
+    isOrganizer,
     user: req.session.user || null,
     guild: req.session.guild || null,
   });
