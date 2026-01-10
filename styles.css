@@ -951,12 +951,13 @@ body.timer-modal-open {
   background: #f8fafc;
   max-height: 500px;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .carousel-track {
   display: flex;
   transition: transform 0.3s ease-in-out;
-  width: 100%;
 }
 
 .carousel-card {
