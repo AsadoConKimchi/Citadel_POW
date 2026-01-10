@@ -1464,8 +1464,15 @@ const promptPendingDailyDonation = async () => {
     plan: entry.plan || `${pendingDate} 누적 POW`,
   };
   drawBadge(sessionData);
+  const dataUrl = getBadgeDataUrl();
+  const totalMinutes = Math.floor((entry.seconds || 0) / 60);
+  const achievementRate = sessionData.goalMinutes > 0
+    ? Math.round((totalMinutes / sessionData.goalMinutes) * 100)
+    : 0;
+  const totalDonatedSats = getTotalDonatedSats() + entry.sats;
+
   const payload = buildDonationPayload({
-    dataUrl: getBadgeDataUrl(),
+    dataUrl: dataUrl,
     plan: sessionData.plan,
     durationSeconds: sessionData.durationSeconds,
     goalMinutes: sessionData.goalMinutes,
@@ -1479,12 +1486,21 @@ const promptPendingDailyDonation = async () => {
       saveDonationHistoryEntry({
         date: pendingDate,
         sats: entry.sats,
-        minutes: Math.floor((entry.seconds || 0) / 60),
+        minutes: totalMinutes,
         seconds: entry.seconds || 0,
         mode: entry.mode || "pow-writing",
         scope: "daily",
         note: entry.note || "",
         isPaid: true,
+        // POW 정보
+        planText: sessionData.plan,
+        goalMinutes: sessionData.goalMinutes,
+        achievementRate: achievementRate,
+        photoUrl: dataUrl,
+        // 누적 정보
+        accumulatedSats: 0,
+        totalAccumulatedSats: 0,
+        totalDonatedSats: totalDonatedSats,
       });
       delete pending[pendingDate];
       savePendingDaily(pending);
@@ -1617,6 +1633,11 @@ const openLightningWallet = async () => {
     accumulatedSats,
     totalAccumulatedSats,
   });
+  // 달성률 계산
+  const achievementRate = lastSession.goalMinutes > 0
+    ? Math.round((totalMinutes / lastSession.goalMinutes) * 100)
+    : 0;
+
   await openLightningWalletWithPayload(payload, {
     onSuccess: () => {
       saveDonationHistoryEntry({
@@ -1629,6 +1650,15 @@ const openLightningWallet = async () => {
         sessionId,
         note,
         isPaid: true,
+        // POW 정보
+        planText: lastSession.plan,
+        goalMinutes: lastSession.goalMinutes,
+        achievementRate: achievementRate,
+        photoUrl: dataUrl,
+        // 누적 정보
+        accumulatedSats: scope === "session" ? 0 : accumulatedSats,
+        totalAccumulatedSats: totalAccumulatedSats,
+        totalDonatedSats: totalDonatedSats,
       });
       showAccumulationToast("기부가 완료되었습니다. 페이지를 새로고침합니다...");
       setTimeout(() => {
@@ -1675,6 +1705,12 @@ const openAccumulatedDonationPayment = async () => {
     totalAccumulatedSats,
   });
 
+  // 달성률 계산
+  const totalMinutes = Math.floor(donationSeconds / 60);
+  const achievementRate = lastSession.goalMinutes > 0
+    ? Math.round((totalMinutes / lastSession.goalMinutes) * 100)
+    : 0;
+
   // 적립액 기부는 Blink 웹훅이 자동으로 디스코드에 공유
   // 결제 완료 후 localStorage 업데이트 및 UI 갱신
   await openLightningWalletWithPayload(payload, {
@@ -1688,12 +1724,21 @@ const openAccumulatedDonationPayment = async () => {
       saveDonationHistoryEntry({
         date: todayKey,
         sats,
-        minutes: Math.floor(donationSeconds / 60),
+        minutes: totalMinutes,
         seconds: donationSeconds,
         mode,
         scope: "total",
         note,
         isPaid: true,
+        // POW 정보
+        planText: lastSession.plan,
+        goalMinutes: lastSession.goalMinutes,
+        achievementRate: achievementRate,
+        photoUrl: dataUrl,
+        // 누적 정보
+        accumulatedSats: accumulatedSats,
+        totalAccumulatedSats: totalAccumulatedSats,
+        totalDonatedSats: totalDonatedSats,
       });
 
       // UI 업데이트
