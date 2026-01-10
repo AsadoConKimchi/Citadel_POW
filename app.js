@@ -2508,8 +2508,8 @@ const shareToDiscordOnly = async () => {
 
     // 디스코드 공유 성공 후 오늘의 목표 초기화
     localStorage.removeItem(planKey);
-    if (planInput) {
-      planInput.value = "";
+    if (studyPlanInput) {
+      studyPlanInput.value = "";
     }
 
     // Discord 공유 성공 후 적립액 UI 업데이트
