@@ -838,15 +838,15 @@ const finishSession = () => {
         const sessionData = await res.json();
         if (sessionData.authenticated && sessionData.user?.id) {
           await StudySessionAPI.create(sessionData.user.id, {
-            donationMode: currentMode,
-            planText: planWithCategory,
-            startTime: startTime.toISOString(),
-            endTime: endTime.toISOString(),
-            durationMinutes: actualMinutes,
-            goalMinutes: goalMinutes || 0,
-            achievementRate: achievementRate,
-            photoUrl: photoDataUrl,
-            donationId: null,
+            donation_mode: currentMode,
+            plan_text: planWithCategory,
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            duration_minutes: actualMinutes,
+            goal_minutes: goalMinutes || 0,
+            achievement_rate: achievementRate,
+            photo_url: photoDataUrl,
+            donation_id: null,
           });
           console.log('공부 세션이 백엔드에 저장되었습니다.');
         }
