@@ -113,8 +113,17 @@ const loadSessions = async () => {
     // 첫 번째 세션의 photo_url 확인
     if (allSessions.length > 0) {
       console.log("첫 번째 세션 데이터:", allSessions[0]);
-      console.log("discord_posts:", allSessions[0].discord_posts);
-      const photoUrl = allSessions[0].discord_posts?.[0]?.photo_url || allSessions[0].photo_url;
+      console.log("discord_posts 타입:", typeof allSessions[0].discord_posts, Array.isArray(allSessions[0].discord_posts));
+      console.log("discord_posts 값:", allSessions[0].discord_posts);
+
+      let photoUrl = allSessions[0].photo_url;
+      if (allSessions[0].discord_posts) {
+        if (Array.isArray(allSessions[0].discord_posts) && allSessions[0].discord_posts.length > 0) {
+          photoUrl = allSessions[0].discord_posts[0].photo_url || photoUrl;
+        } else if (typeof allSessions[0].discord_posts === 'object' && allSessions[0].discord_posts.photo_url) {
+          photoUrl = allSessions[0].discord_posts.photo_url;
+        }
+      }
       console.log("최종 photo_url:", photoUrl);
     }
 
@@ -262,7 +271,14 @@ const updateStats = () => {
 function renderRecordCard(session, index, currentIndex) {
   const isActive = index === currentIndex;
   // discord_posts에서 photo_url 가져오기 (없으면 session.photo_url 사용)
-  const photoUrl = session.discord_posts?.[0]?.photo_url || session.photo_url;
+  let photoUrl = session.photo_url;
+  if (session.discord_posts) {
+    if (Array.isArray(session.discord_posts) && session.discord_posts.length > 0) {
+      photoUrl = session.discord_posts[0].photo_url || photoUrl;
+    } else if (typeof session.discord_posts === 'object' && session.discord_posts.photo_url) {
+      photoUrl = session.discord_posts.photo_url;
+    }
+  }
   const seconds = session.duration_seconds ?? (session.duration_minutes ? session.duration_minutes * 60 : 0);
   const timeText = seconds > 0 ? formatDuration(seconds, false) : "0분";
   const plan = session.plan_text || "계획 없음";
