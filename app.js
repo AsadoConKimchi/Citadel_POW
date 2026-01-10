@@ -1592,6 +1592,9 @@ const openLightningWalletWithPayload = async (payload, { onSuccess } = {}) => {
 
     // invoice 저장 (결제 확인용)
     currentInvoice = normalizedInvoice;
+    console.log('✅ [DEBUG] currentInvoice 설정됨:', currentInvoice.substring(0, 50) + '...');
+    console.log('  - currentDonationScope:', payload.scope);
+    console.log('  - currentDonationSats:', payload.sats);
 
     if (shareStatus) {
       shareStatus.textContent =
@@ -1655,6 +1658,9 @@ const openLightningWallet = async () => {
   currentDonationScope = scope;
   currentDonationSats = sats;
   currentDonationPayload = payload;
+  console.log('📝 [DEBUG] 기부 정보 저장됨 (openLightningWallet)');
+  console.log('  - scope:', scope);
+  console.log('  - sats:', sats);
 
   await openLightningWalletWithPayload(payload, {
     onSuccess: async () => {
@@ -1752,6 +1758,9 @@ const openAccumulatedDonationPayment = async () => {
   currentDonationScope = "accumulated";
   currentDonationSats = sats;
   currentDonationPayload = payload;
+  console.log('📝 [DEBUG] 기부 정보 저장됨 (donateDailyAccumulated)');
+  console.log('  - scope: accumulated');
+  console.log('  - sats:', sats);
 
   // 결제 완료 후 Discord 공유 및 localStorage 업데이트
   await openLightningWalletWithPayload(payload, {
@@ -1903,10 +1912,17 @@ const closeWalletSelection = async () => {
     return;
   }
 
+  console.log('🔍 [DEBUG] closeWalletSelection 호출됨');
+  console.log('  - currentInvoice:', currentInvoice ? currentInvoice.substring(0, 50) + '...' : 'null');
+  console.log('  - currentDonationScope:', currentDonationScope);
+  console.log('  - currentDonationSats:', currentDonationSats);
+  console.log('  - pendingOnSuccessCallback:', typeof pendingOnSuccessCallback);
+
   // 결제 상태 확인
   if (pendingOnSuccessCallback && typeof pendingOnSuccessCallback === "function") {
     // Blink API로 결제 상태 확인
     if (!currentInvoice) {
+      console.log('❌ [ERROR] currentInvoice가 null입니다!');
       alert("Invoice가 없습니다. 결제 상태를 확인할 수 없습니다.");
       pendingOnSuccessCallback = null;
       currentInvoice = null;
@@ -1915,6 +1931,8 @@ const closeWalletSelection = async () => {
       currentDonationPayload = null;
       return;
     }
+
+    console.log('✅ [DEBUG] 결제 확인 시작...');
 
     try {
       // 결제 확인 함수
