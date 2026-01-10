@@ -82,6 +82,7 @@ const StudySessionAPI = {
       // 시간 정보
       start_time: sessionData.startTime,
       end_time: sessionData.endTime,
+      duration_seconds: sessionData.durationSeconds,
       duration_minutes: sessionData.durationMinutes,
       goal_minutes: sessionData.goalMinutes || 0,
       achievement_rate: sessionData.achievementRate || 0,

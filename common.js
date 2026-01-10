@@ -46,6 +46,49 @@ function formatMinutesToHoursMinutes(minutes) {
 }
 
 /**
+ * 초를 사람이 읽기 쉬운 형식으로 변환
+ * @param {number} totalSeconds - 변환할 초
+ * @param {boolean} short - 짧은 형식 사용 여부
+ * @returns {string} "1시간 30분" 또는 "1.5시간" 또는 "45초"
+ */
+function formatDuration(totalSeconds, short = false) {
+  if (totalSeconds < 60) {
+    // 60초 미만
+    return `${totalSeconds}초`;
+  }
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (short) {
+    // 짧은 형식: "1.5시간" 또는 "45분"
+    if (hours > 0) {
+      const decimalHours = (totalSeconds / 3600).toFixed(1);
+      return `${decimalHours}시간`;
+    }
+    return `${minutes}분`;
+  }
+
+  // 긴 형식: "1시간 30분 15초"
+  if (hours > 0) {
+    if (seconds > 0) {
+      return `${hours}시간 ${minutes}분 ${seconds}초`;
+    }
+    if (minutes > 0) {
+      return `${hours}시간 ${minutes}분`;
+    }
+    return `${hours}시간`;
+  }
+
+  if (seconds > 0) {
+    return `${minutes}분 ${seconds}초`;
+  }
+
+  return `${minutes}분`;
+}
+
+/**
  * ISO 날짜 문자열을 "YYYY-MM-DD" 형식으로 변환
  * @param {string} isoString - ISO 날짜 문자열
  * @returns {string} "YYYY-MM-DD"

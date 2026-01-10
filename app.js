@@ -842,6 +842,7 @@ const finishSession = () => {
             planText: planWithCategory,
             startTime: startTime.toISOString(),
             endTime: endTime.toISOString(),
+            durationSeconds: elapsedSeconds,
             durationMinutes: actualMinutes,
             goalMinutes: goalMinutes || 0,
             achievementRate: achievementRate,

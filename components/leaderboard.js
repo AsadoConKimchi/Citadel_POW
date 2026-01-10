@@ -114,13 +114,9 @@ class Leaderboard {
     let valueText = '';
 
     if (this.type === 'time') {
-      // POW 시간 기준
-      const minutes = item.total_minutes || 0;
-      const hours = Math.floor(minutes / 60);
-      const remainingMinutes = minutes % 60;
-      valueText = hours > 0
-        ? `${hours}시간 ${remainingMinutes}분`
-        : `${minutes}분`;
+      // POW 시간 기준 (초 단위로 저장된 데이터 사용)
+      const seconds = item.total_seconds || 0;
+      valueText = formatDuration(seconds, false); // formatDuration(초, 긴 형식)
     } else if (this.type === 'donation' || this.type === 'top-donors') {
       // 기부 금액 기준
       const total = item.total_donations || item.total_donated || 0;
