@@ -1921,29 +1921,51 @@ const closeWalletSelection = async () => {
     }
 
     try {
-      // 결제 확인 중 표시
-      if (walletStatus) {
-        walletStatus.textContent = "결제 상태를 확인하는 중입니다...";
+      // 결제 확인 함수
+      const checkPayment = async (attempt = 1) => {
+        if (walletStatus) {
+          walletStatus.textContent = `결제 상태를 확인하는 중입니다... (${attempt}/3)`;
+        }
+
+        // 첫 시도 전 1초 대기 (Blink API 반영 시간)
+        if (attempt === 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        const checkResponse = await fetch(`${window.BACKEND_API_URL}/api/blink/check-invoice`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentHash: currentPaymentHash,
+          }),
+        });
+
+        if (!checkResponse.ok) {
+          throw new Error("결제 상태 확인에 실패했습니다.");
+        }
+
+        const checkResult = await checkResponse.json();
+        if (!checkResult?.success) {
+          throw new Error("결제 상태 확인 응답이 올바르지 않습니다.");
+        }
+
+        return checkResult.data?.paid;
+      };
+
+      // 최대 3번 재시도 (각 2초 간격)
+      let isPaid = false;
+      for (let i = 1; i <= 3; i++) {
+        isPaid = await checkPayment(i);
+        if (isPaid) {
+          console.log(`결제 확인 성공 (시도 ${i}/3)`);
+          break;
+        }
+        // 마지막 시도가 아니면 2초 대기
+        if (i < 3) {
+          console.log(`결제 미확인, ${i}/3 시도 후 2초 대기...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
       }
-
-      const checkResponse = await fetch(`${window.BACKEND_API_URL}/api/blink/check-invoice`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          paymentHash: currentPaymentHash,
-        }),
-      });
-
-      if (!checkResponse.ok) {
-        throw new Error("결제 상태 확인에 실패했습니다.");
-      }
-
-      const checkResult = await checkResponse.json();
-      if (!checkResult?.success) {
-        throw new Error("결제 상태 확인 응답이 올바르지 않습니다.");
-      }
-
-      const isPaid = checkResult.data?.paid;
 
       if (isPaid) {
         // 결제 확인됨 - onSuccess 콜백 실행
