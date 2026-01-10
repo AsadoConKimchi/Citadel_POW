@@ -3,6 +3,32 @@
  * 그룹 POW Meet-up 페이지 메인 로직
  */
 
+// ============================================
+// 설정
+// ============================================
+
+/**
+ * Organizer 역할 설정
+ *
+ * 여러 방법으로 설정 가능:
+ * 1. Discord 역할 ID 사용 (권장)
+ * 2. 특정 Discord 사용자 ID 사용
+ * 3. 모두 허용 (개발/테스트용)
+ */
+const ORGANIZER_CONFIG = {
+  // 방법 1: Discord 역할 ID (서버 설정 > 역할에서 확인 가능)
+  // 예: '1234567890'
+  roleIds: [],
+
+  // 방법 2: 특정 Discord 사용자 ID
+  // 예: ['987654321', '123456789']
+  discordIds: [],
+
+  // 방법 3: 모두 허용 (개발/테스트용)
+  // true로 설정하면 모든 사용자가 Organizer가 됩니다
+  allowAll: true,
+};
+
 // 전역 변수
 let currentUser = null;
 let meetupList = null;
@@ -61,8 +87,8 @@ async function initialize() {
     console.error('사용자 등록 오류:', error);
   }
 
-  // Organizer 여부 확인 (TODO: 실제 역할 ID로 변경 필요)
-  const isOrganizer = checkOrganizerRole(currentUser.roles);
+  // Organizer 여부 확인
+  const isOrganizer = checkOrganizerRole(currentUser.roles, currentUser.discord_id);
 
   // UI 초기화
   initializeUI(isOrganizer);
@@ -73,15 +99,30 @@ async function initialize() {
 
 /**
  * Organizer 역할 확인
+ *
+ * 참고: 이 함수는 UI 표시 목적으로만 사용됩니다.
+ * 실제 권한 검증은 백엔드 API에서 수행됩니다.
  */
-function checkOrganizerRole(roles) {
-  // TODO: 실제 Organizer 역할 ID로 변경 필요
-  // 현재는 모든 사용자를 Organizer로 간주 (테스트용)
-  return true;
+function checkOrganizerRole(roles, discordId) {
+  // 방법 3: 모두 허용
+  if (ORGANIZER_CONFIG.allowAll) {
+    return true;
+  }
 
-  // 실제 구현 예시:
-  // const ORGANIZER_ROLE_ID = '1234567890'; // 실제 역할 ID
-  // return roles && roles.includes(ORGANIZER_ROLE_ID);
+  // 방법 2: 특정 Discord 사용자 ID 확인
+  if (ORGANIZER_CONFIG.discordIds.length > 0 && discordId) {
+    if (ORGANIZER_CONFIG.discordIds.includes(discordId)) {
+      return true;
+    }
+  }
+
+  // 방법 1: Discord 역할 ID 확인
+  if (ORGANIZER_CONFIG.roleIds.length > 0 && roles && roles.length > 0) {
+    return roles.some((roleId) => ORGANIZER_CONFIG.roleIds.includes(roleId));
+  }
+
+  // 설정되지 않았으면 거부
+  return false;
 }
 
 /**
