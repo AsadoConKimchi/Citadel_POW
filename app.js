@@ -1871,6 +1871,13 @@ const renderWalletInvoice = (invoice) => {
     lightningUri
   )}`;
   walletInvoiceQr.src = qrUrl;
+
+  // QR 표시 직후 자동 polling 시작 (3초 후)
+  if (invoice && pendingOnSuccessCallback) {
+    console.log('🚀 QR 표시 완료 - 3초 후 polling 시작');
+    currentInvoice = normalizedInvoice; // currentInvoice 업데이트
+    setTimeout(() => startPaymentPolling(), 3000);
+  }
 };
 
 // 결제 완료 후 실행할 콜백 저장
@@ -1879,6 +1886,7 @@ let currentInvoice = null;
 let currentDonationScope = null; // 'session', 'total', 'accumulated'
 let currentDonationSats = 0;
 let currentDonationPayload = null;
+let paymentPollingInterval = null; // 자동 결제 확인 polling interval
 
 const openWalletSelection = ({ invoice, message, onSuccess } = {}) => {
   // onSuccess 콜백 저장
@@ -1907,150 +1915,279 @@ const openWalletSelection = ({ invoice, message, onSuccess } = {}) => {
   }
 };
 
+// 자동 결제 확인 polling 시작
+const startPaymentPolling = () => {
+  // 이미 polling 중이면 중단
+  if (paymentPollingInterval) {
+    clearInterval(paymentPollingInterval);
+    paymentPollingInterval = null;
+  }
+
+  if (!currentInvoice || !pendingOnSuccessCallback) {
+    console.log('⚠️ polling 시작 불가: invoice 또는 callback 없음');
+    return;
+  }
+
+  let attemptCount = 0;
+  const maxAttempts = 100; // 5분 (3초 간격 × 100회)
+
+  console.log('🚀 결제 확인 polling 시작 (최대 5분)');
+
+  paymentPollingInterval = setInterval(async () => {
+    attemptCount++;
+    console.log(`💳 결제 확인 polling... (${attemptCount}/${maxAttempts})`);
+
+    try {
+      const checkResponse = await fetch(`${window.BACKEND_API_URL}/api/blink/check-invoice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentRequest: currentInvoice }),
+      });
+
+      if (!checkResponse.ok) {
+        console.log(`⚠️ API 응답 오류: ${checkResponse.status}`);
+        return; // 다음 polling 계속
+      }
+
+      const checkResult = await checkResponse.json();
+
+      if (checkResult?.success && checkResult.data?.paid) {
+        // ✅ 결제 확인 성공!
+        console.log('✅ 결제 확인 성공 - 자동 처리 시작');
+        clearInterval(paymentPollingInterval);
+        paymentPollingInterval = null;
+
+        // 콜백 실행 (donations 테이블에 저장)
+        if (pendingOnSuccessCallback) {
+          try {
+            await pendingOnSuccessCallback();
+          } catch (error) {
+            console.error('❌ 콜백 실행 오류:', error);
+            alert("기부 기록 저장 중 오류가 발생했습니다: " + error.message);
+            return;
+          }
+        }
+
+        // 모달 닫기
+        if (walletModal) {
+          walletModal.classList.add("hidden");
+          walletModal.setAttribute("aria-hidden", "true");
+          walletModal.dataset.invoice = "";
+        }
+
+        // 상태 초기화
+        pendingOnSuccessCallback = null;
+        currentInvoice = null;
+        currentDonationScope = null;
+        currentDonationSats = 0;
+        currentDonationPayload = null;
+
+        // Option B: 부드러운 UI 업데이트 (페이지 새로고침 대신)
+        updateAccumulatedSats();
+        updateTodayDonationSummary();
+        showAccumulationToast("기부가 완료되었습니다! 🎉");
+
+        // 모달 UI 초기화
+        if (walletStatus) {
+          walletStatus.textContent = "선택한 지갑으로 인보이스를 전달합니다.";
+        }
+        renderWalletInvoice("");
+        setWalletOptionsEnabled(true);
+        if (walletToast) {
+          walletToast.classList.add("hidden");
+        }
+      }
+
+      // 타임아웃 체크
+      if (attemptCount >= maxAttempts) {
+        console.log('⏱️ Polling 타임아웃 (5분 경과)');
+        clearInterval(paymentPollingInterval);
+        paymentPollingInterval = null;
+
+        if (walletStatus) {
+          walletStatus.textContent = "결제 확인 시간이 초과되었습니다. X 버튼을 눌러 수동으로 확인하세요.";
+        }
+      }
+    } catch (error) {
+      console.error('❌ Polling 오류:', error);
+      // 다음 polling 계속
+    }
+  }, 3000); // 3초 간격
+};
+
 const closeWalletSelection = async () => {
   if (!walletModal) {
     return;
   }
 
-  console.log('🔍 [DEBUG] closeWalletSelection 호출됨');
+  console.log('🔍 [DEBUG] closeWalletSelection 호출됨 (X 버튼 클릭)');
   console.log('  - currentInvoice:', currentInvoice ? currentInvoice.substring(0, 50) + '...' : 'null');
   console.log('  - currentDonationScope:', currentDonationScope);
   console.log('  - currentDonationSats:', currentDonationSats);
   console.log('  - pendingOnSuccessCallback:', typeof pendingOnSuccessCallback);
 
-  // 결제 상태 확인
-  if (pendingOnSuccessCallback && typeof pendingOnSuccessCallback === "function") {
-    // Blink API로 결제 상태 확인
-    if (!currentInvoice) {
-      console.log('❌ [ERROR] currentInvoice가 null입니다!');
-      alert("Invoice가 없습니다. 결제 상태를 확인할 수 없습니다.");
-      pendingOnSuccessCallback = null;
-      currentInvoice = null;
-      currentDonationScope = null;
-      currentDonationSats = 0;
-      currentDonationPayload = null;
-      return;
-    }
-
-    console.log('✅ [DEBUG] 결제 확인 시작...');
-
-    try {
-      // 결제 확인 함수
-      const checkPayment = async (attempt = 1) => {
-        if (walletStatus) {
-          walletStatus.textContent = `결제 상태를 확인하는 중입니다... (${attempt}/5)`;
-        }
-
-        // 첫 시도 전 3초 대기 (Blink API 반영 시간)
-        if (attempt === 1) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
-
-        const checkResponse = await fetch(`${window.BACKEND_API_URL}/api/blink/check-invoice`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            paymentRequest: currentInvoice,
-          }),
-        });
-
-        if (!checkResponse.ok) {
-          throw new Error("결제 상태 확인에 실패했습니다.");
-        }
-
-        const checkResult = await checkResponse.json();
-        if (!checkResult?.success) {
-          throw new Error("결제 상태 확인 응답이 올바르지 않습니다.");
-        }
-
-        return checkResult.data?.paid;
-      };
-
-      // 최대 5번 재시도 (각 3초 간격)
-      let isPaid = false;
-      for (let i = 1; i <= 5; i++) {
-        isPaid = await checkPayment(i);
-        if (isPaid) {
-          console.log(`결제 확인 성공 (시도 ${i}/5)`);
-          break;
-        }
-        // 마지막 시도가 아니면 3초 대기
-        if (i < 5) {
-          console.log(`결제 미확인, ${i}/5 시도 후 3초 대기...`);
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
-      }
-
-      if (isPaid) {
-        // 결제 확인됨 - onSuccess 콜백 실행
-        try {
-          await pendingOnSuccessCallback();
-        } catch (error) {
-          console.error("결제 완료 콜백 실행 중 오류:", error);
-          alert("기부 기록 저장 중 오류가 발생했습니다: " + error.message);
-        }
-      } else {
-        // 결제 안됨 - scope에 따라 다른 처리
-        if (currentDonationScope === "session") {
-          // 즉시기부 실패
-          const retry = window.confirm("기부가 되지 않았습니다. 다시 시도할까요?");
-          if (retry) {
-            // 모달을 닫지 않고 return
-            return;
-          } else {
-            // 적립하기 확인
-            const accumulate = window.confirm("적립하시겠습니까?");
-            if (accumulate) {
-              // 적립액에 추가
-              const pending = getPendingDaily();
-              const todayKey = new Date().toISOString().split("T")[0];
-              if (!pending[todayKey]) {
-                pending[todayKey] = {
-                  sats: currentDonationSats,
-                  seconds: currentDonationPayload?.minutes * 60 || 0,
-                  mode: currentDonationPayload?.donationMode || "pow-writing",
-                  plan: currentDonationPayload?.plan || "",
-                  goalMinutes: currentDonationPayload?.goalRate ? parseInt(currentDonationPayload.goalRate) : 0,
-                  note: currentDonationPayload?.donationNote || "",
-                };
-              } else {
-                pending[todayKey].sats += currentDonationSats;
-              }
-              savePendingDaily(pending);
-              showAccumulationToast(`${currentDonationSats}sats가 적립되었습니다.`);
-
-              // UI 업데이트
-              updateAccumulatedSats();
-              updateTodayDonationSummary();
-            }
-          }
-        } else if (currentDonationScope === "accumulated") {
-          // 적립금 기부 실패
-          const retry = window.confirm("기부가 되지 않았습니다. 다시 시도할까요?");
-          if (retry) {
-            // 모달을 닫지 않고 return
-            return;
-          }
-          // "다음에 할게요" 선택 → 적립액 유지하고 모달 닫기
-        }
-        // scope === 'total' (적립 후 기부)는 여기서 처리할 필요 없음
-      }
-    } catch (error) {
-      console.error("결제 확인 중 오류:", error);
-      alert("결제 확인 중 오류가 발생했습니다: " + error.message);
-      // 모달을 닫지 않고 return
-      return;
-    }
-
-    // 콜백 및 상태 초기화
-    pendingOnSuccessCallback = null;
-    currentInvoice = null;
-    currentDonationScope = null;
-    currentDonationSats = 0;
-    currentDonationPayload = null;
+  // 1. polling 즉시 중단
+  if (paymentPollingInterval) {
+    console.log('⏹️ Polling 중단');
+    clearInterval(paymentPollingInterval);
+    paymentPollingInterval = null;
   }
 
-  // 모달 닫기
+  // 2. 마지막으로 한 번만 더 결제 확인
+  if (pendingOnSuccessCallback && currentInvoice) {
+    if (walletStatus) {
+      walletStatus.textContent = "결제 확인 중입니다. 잠시만 기다려주세요...";
+    }
+
+    try {
+      console.log('🔍 마지막 결제 확인 시도...');
+      const checkResponse = await fetch(`${window.BACKEND_API_URL}/api/blink/check-invoice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentRequest: currentInvoice }),
+      });
+
+      // ⚠️ API 응답 상태 체크
+      if (!checkResponse.ok) {
+        throw new Error(`API 오류: ${checkResponse.status}`);
+      }
+
+      const checkResult = await checkResponse.json();
+
+      // ✅ Case 1: 결제 완료 확인됨
+      if (checkResult?.success && checkResult.data?.paid) {
+        console.log('✅ 결제 확인 성공!');
+        await pendingOnSuccessCallback();
+
+        // 상태 초기화
+        pendingOnSuccessCallback = null;
+        currentInvoice = null;
+        currentDonationScope = null;
+        currentDonationSats = 0;
+        currentDonationPayload = null;
+
+        // 모달 닫기
+        walletModal.classList.add("hidden");
+        walletModal.setAttribute("aria-hidden", "true");
+        walletModal.dataset.invoice = "";
+        if (walletStatus) {
+          walletStatus.textContent = "선택한 지갑으로 인보이스를 전달합니다.";
+        }
+        renderWalletInvoice("");
+        setWalletOptionsEnabled(true);
+        if (walletToast) {
+          walletToast.classList.add("hidden");
+        }
+
+        // Option B: 부드러운 UI 업데이트
+        updateAccumulatedSats();
+        updateTodayDonationSummary();
+        showAccumulationToast("기부가 완료되었습니다! 🎉");
+
+        return; // 여기서 종료 (안내창 표시 안 함)
+      }
+
+      // ❌ Case 2: 결제 미완료 확인됨 (API는 정상, 결제만 안 됨)
+      if (checkResult?.success && checkResult.data?.paid === false) {
+        console.log('❌ 결제 미완료 확인됨');
+
+        // "적립할까요?" 안내창
+        if (currentDonationScope === "session") {
+          const accumulate = window.confirm("아직 POW 활동에 대한 기부가 되지 않았습니다. 적립할까요?");
+          if (accumulate) {
+            // 적립액에 합산
+            const pending = getPendingDaily();
+            const todayKey = new Date().toISOString().split("T")[0];
+            if (!pending[todayKey]) {
+              pending[todayKey] = {
+                sats: currentDonationSats,
+                seconds: currentDonationPayload?.minutes * 60 || 0,
+                mode: currentDonationPayload?.donationMode || "pow-writing",
+                plan: currentDonationPayload?.plan || "",
+                goalMinutes: currentDonationPayload?.goalRate ? parseInt(currentDonationPayload.goalRate) : 0,
+                note: currentDonationPayload?.donationNote || "",
+              };
+            } else {
+              pending[todayKey].sats += currentDonationSats;
+            }
+            savePendingDaily(pending);
+            showAccumulationToast(`${currentDonationSats}sats가 적립되었습니다.`);
+            updateAccumulatedSats();
+            updateTodayDonationSummary();
+          }
+        } else if (currentDonationScope === "accumulated") {
+          const later = window.confirm("나중에 기부할까요?");
+          // "예" → 적립액 유지 (아무것도 안 함)
+        }
+
+        // 상태 초기화
+        pendingOnSuccessCallback = null;
+        currentInvoice = null;
+        currentDonationScope = null;
+        currentDonationSats = 0;
+        currentDonationPayload = null;
+
+        // 모달 닫기
+        walletModal.classList.add("hidden");
+        walletModal.setAttribute("aria-hidden", "true");
+        walletModal.dataset.invoice = "";
+        if (walletStatus) {
+          walletStatus.textContent = "선택한 지갑으로 인보이스를 전달합니다.";
+        }
+        renderWalletInvoice("");
+        setWalletOptionsEnabled(true);
+        if (walletToast) {
+          walletToast.classList.add("hidden");
+        }
+
+        return;
+      }
+
+      // ⚠️ Case 3: API 응답이 이상함 (success=false 등)
+      throw new Error(checkResult?.error || 'API 응답 형식이 올바르지 않습니다.');
+
+    } catch (error) {
+      // ⚠️ Case 4: API 호출 자체가 실패 (네트워크 오류, 서버 오류 등)
+      console.error('❌ 결제 확인 중 오류:', error);
+
+      // 재시도 안내창
+      const retry = window.confirm(
+        "결제 확인 중 오류가 발생했습니다.\n" +
+        "네트워크 문제일 수 있습니다.\n\n" +
+        "다시 확인하시겠습니까?\n" +
+        "(취소하면 모달만 닫힙니다. 적립액은 유지됩니다.)"
+      );
+
+      if (retry) {
+        // 재시도 (모달 닫지 않음)
+        if (walletStatus) {
+          walletStatus.textContent = "결제 확인을 재시도합니다...";
+        }
+
+        // 1초 후 다시 closeWalletSelection 호출 (재귀)
+        setTimeout(() => closeWalletSelection(), 1000);
+        return; // 모달 닫지 않고 종료
+      } else {
+        // 취소 → 모달만 닫기 (적립 안 함, 상태 유지)
+        console.log('사용자가 재시도 취소 → 모달만 닫음');
+        walletModal.classList.add("hidden");
+        walletModal.setAttribute("aria-hidden", "true");
+        walletModal.dataset.invoice = "";
+        if (walletStatus) {
+          walletStatus.textContent = "선택한 지갑으로 인보이스를 전달합니다.";
+        }
+        renderWalletInvoice("");
+        setWalletOptionsEnabled(true);
+        if (walletToast) {
+          walletToast.classList.add("hidden");
+        }
+        // 상태는 초기화하지 않음 (나중에 다시 시도 가능)
+        return;
+      }
+    }
+  }
+
+  // 3. 모달 닫기 (일반 케이스 - callback 없을 때)
   walletModal.classList.add("hidden");
   walletModal.setAttribute("aria-hidden", "true");
   walletModal.dataset.invoice = "";
@@ -2910,3 +3047,12 @@ if (discordRefresh) {
     discordRefresh.disabled = false;
   });
 }
+
+// 페이지 이동 시 polling cleanup
+window.addEventListener('beforeunload', () => {
+  if (paymentPollingInterval) {
+    console.log('🧹 페이지 이동 - polling cleanup');
+    clearInterval(paymentPollingInterval);
+    paymentPollingInterval = null;
+  }
+});

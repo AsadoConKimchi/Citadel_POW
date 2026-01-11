@@ -1,5 +1,5 @@
-// Citadel POW 대시보드 - study-history.html 전용 스크립트
-// Phase 3: 대시보드 + 인기 기록 기능
+// Citadel POW 리더보드 - study-history.html 전용 스크립트
+// Phase 3: 리더보드 + 인기 기록 기능
 
 // ============================================
 // DOM 요소 선택
@@ -9,7 +9,7 @@ const powCategoryFilter = document.getElementById("pow-category-filter");
 const dashboardTab = document.getElementById("dashboard");
 const popularRecordsTab = document.getElementById("popular-records");
 
-// 대시보드 요소
+// 리더보드 요소
 const dashboardLeaderboardTitle = document.getElementById("dashboard-leaderboard-title");
 const dashboardLeaderboard = document.getElementById("dashboard-leaderboard");
 const rankingTypeButtons = document.querySelectorAll("[data-ranking-type]");
@@ -39,7 +39,7 @@ let currentUser = null;
 // ============================================
 
 /**
- * 대시보드 타이틀 업데이트
+ * 리더보드 타이틀 업데이트
  */
 function updateDashboardTitle() {
   const categoryName = getCategoryName(currentCategory);
@@ -165,7 +165,7 @@ const loadSession = async () => {
 };
 
 // ============================================
-// 대시보드 로드
+// 리더보드 로드
 // ============================================
 
 async function loadDashboard() {
@@ -179,7 +179,7 @@ async function loadDashboard() {
       .setCategory(currentCategory)
       .reload();
   } catch (error) {
-    console.error("대시보드 로드 실패:", error);
+    console.error("리더보드 로드 실패:", error);
     showError(dashboardLeaderboard, "데이터를 불러올 수 없습니다.");
   }
 }
