@@ -39,7 +39,29 @@ let currentUser = null;
 // ============================================
 
 /**
- * 리더보드 타이틀 업데이트
+ * 현재 주차 기간 계산 (ISO 8601 기준)
+ * @returns {string} "2025년 1월 2주차" 형식
+ */
+function getCurrentWeekPeriod() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1; // 0부터 시작하므로 +1
+
+  // ISO 8601 주차 계산 (월요일 시작)
+  const startOfYear = new Date(year, 0, 1);
+  const days = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
+  const isoWeek = Math.ceil((days + startOfYear.getDay() + 1) / 7);
+
+  // 해당 월의 몇 번째 주인지 계산
+  const startOfMonth = new Date(year, month - 1, 1);
+  const daysInMonth = Math.floor((now - startOfMonth) / (24 * 60 * 60 * 1000));
+  const weekOfMonth = Math.ceil((daysInMonth + startOfMonth.getDay() + 1) / 7);
+
+  return `${year}년 ${month}월 ${weekOfMonth}주차`;
+}
+
+/**
+ * 리더보드 타이틀 및 주차 기간 업데이트
  */
 function updateDashboardTitle() {
   const categoryName = getCategoryName(currentCategory);
@@ -49,6 +71,12 @@ function updateDashboardTitle() {
     dashboardLeaderboardTitle.textContent = `${typeName} TOP 5`;
   } else {
     dashboardLeaderboardTitle.textContent = `${categoryName} ${typeName} TOP 5`;
+  }
+
+  // ⭐️ 주차 기간 표시
+  const periodElement = document.getElementById("dashboard-leaderboard-period");
+  if (periodElement) {
+    periodElement.textContent = getCurrentWeekPeriod();
   }
 }
 

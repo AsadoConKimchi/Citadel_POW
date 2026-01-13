@@ -494,6 +494,14 @@ const resetTimer = () => {
   timerEndTime = null;  // ⭐️ 종료시간 초기화
   localStorage.removeItem('citadel-timer-end');
   localStorage.removeItem('citadel-timer-goal');
+
+  // ⭐️ 인보이스 관련 전역 변수 초기화 (새 POW 활동 대비)
+  currentInvoice = null;
+  pendingOnSuccessCallback = null;
+  currentDonationScope = null;
+  currentDonationSats = 0;
+  currentDonationPayload = null;
+
   updateDisplay();
   updateSats();
   setDonationControlsEnabled(true);
@@ -894,6 +902,14 @@ const finishSession = () => {
     );
   }
   elapsedSeconds = 0;
+
+  // ⭐️ 인보이스 관련 전역 변수 초기화 (새 POW 활동 대비)
+  currentInvoice = null;
+  pendingOnSuccessCallback = null;
+  currentDonationScope = null;
+  currentDonationSats = 0;
+  currentDonationPayload = null;
+
   updateDisplay();
   updateTotals();
   // updateAccumulatedSats(); // Discord 공유 성공 후에만 적립액 표시
@@ -2421,7 +2437,7 @@ const saveStudyPlan = () => {
 };
 
 
-const updateDiscordProfile = ({ user, guild, authorized }) => {
+const updateDiscordProfile = ({ user, guild, authorized, userLevel }) => {
   if (!discordProfile) {
     return;
   }
@@ -2430,7 +2446,15 @@ const updateDiscordProfile = ({ user, guild, authorized }) => {
     : "https://cdn.discordapp.com/embed/avatars/0.png";
   discordAvatar.src = avatarUrl;
   discordAvatar.alt = user?.username ? `${user.username} avatar` : "Discord avatar";
-  discordAvatar.classList.remove("status-ok", "status-pending");
+
+  // ⭐️ 기존 클래스 제거 (status + level)
+  discordAvatar.classList.remove("status-ok", "status-pending", "user-level-1", "user-level-2", "user-level-3");
+
+  // ⭐️ 사용자 레벨별 클래스 추가 (프로필 테두리 색상)
+  if (userLevel) {
+    discordAvatar.classList.add(`user-level-${userLevel}`);
+  }
+
   if (authorized === true) {
     discordAvatar.classList.add("status-ok");
 
@@ -2453,7 +2477,7 @@ const updateDiscordProfile = ({ user, guild, authorized }) => {
   }
 };
 
-const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
+const setAuthState = ({ authenticated, authorized, user, guild, error, userLevel }) => {
   if (error) {
     if (discordStatus) {
       discordStatus.textContent = `로그인 상태: ${error}`;
@@ -2557,7 +2581,7 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
     if (user && loginUserName) {
       loginUserName.textContent = user.username ?? "-";
     }
-    updateDiscordProfile({ user, guild, authorized: false });
+    updateDiscordProfile({ user, guild, authorized: false, userLevel });
     return;
   }
 
@@ -2587,7 +2611,7 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
   if (discordWebLogin) {
     discordWebLogin.style.display = "none";
   }
-  updateDiscordProfile({ user, guild, authorized: true });
+  updateDiscordProfile({ user, guild, authorized: true, userLevel });
   if (allowedServer) {
     const guildName = guild?.name ?? "citadel.sx";
     allowedServer.textContent = `접속 가능 서버: ${guildName}`;
@@ -3204,6 +3228,11 @@ const restoreTimerState = () => {
       elapsedSeconds = Math.floor(elapsed / 1000);
       elapsedOffsetSeconds = elapsedSeconds;
 
+      // ⭐️ goalInput 복원 (중요!)
+      if (goalInput) {
+        goalInput.value = goalMinutes;
+      }
+
       // ⭐️ 타이머 자동 재시작
       isRunning = true;
       timerStartTime = Date.now();
@@ -3224,6 +3253,11 @@ const restoreTimerState = () => {
       const goalMinutes = parseInt(savedGoal, 10) || 0;
       elapsedSeconds = goalMinutes * 60;
       elapsedOffsetSeconds = elapsedSeconds;
+
+      // ⭐️ goalInput 복원
+      if (goalInput) {
+        goalInput.value = goalMinutes;
+      }
 
       // localStorage 정리
       localStorage.removeItem('citadel-timer-end');

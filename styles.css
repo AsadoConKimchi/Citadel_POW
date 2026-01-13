@@ -547,6 +547,19 @@ button.ghost,
   border-color: #dc2626;
 }
 
+/* ⭐️ 사용자 레벨별 프로필 사진 테두리 색상 */
+.profile-body img.user-level-1 {
+  border-color: #dc2626; /* Level 1: 빨간색 (채널만 접근) */
+}
+
+.profile-body img.user-level-2 {
+  border-color: #16a34a; /* Level 2: 초록색 (기본 인증) */
+}
+
+.profile-body img.user-level-3 {
+  border-color: #f97316; /* Level 3: 주황색 (프리미엄/VIP) */
+}
+
 .login-user {
   display: inline-flex;
   align-items: center;
@@ -893,11 +906,24 @@ body.timer-modal-open {
   background: #f8fafc;
 }
 
+.leaderboard-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .leaderboard-title {
   margin: 0;
   font-weight: 700;
   color: #0f172a;
   font-size: 14px;
+}
+
+.leaderboard-period {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
 }
 
 .leaderboard-list {

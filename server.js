@@ -23,6 +23,7 @@ const {
   PORT = 3000,
   DISCORD_WEBHOOK_URL,
   ORGANIZER_ROLE_IDS,
+  PREMIUM_ROLE_ID, // Level 3 역할 (주황색 테두리)
 } = process.env;
 
 // NOTE: 아래 환경변수들은 Cloudflare Workers로 이동되었습니다
@@ -718,10 +719,27 @@ app.get("/api/session", (req, res) => {
     isOrganizer = organizerRoleIds.some(roleId => userRoles.includes(roleId));
   }
 
+  // 사용자 레벨 계산 (프로필 사진 테두리 색상용)
+  let userLevel = 1; // 기본값: Level 1 (채널만 접근)
+  if (authenticated) {
+    const userRoles = req.session.guild?.roles || [];
+    const hasPremiumRole = PREMIUM_ROLE_ID && userRoles.includes(PREMIUM_ROLE_ID);
+    const hasBasicRole = DISCORD_ROLE_ID && userRoles.includes(DISCORD_ROLE_ID);
+
+    if (hasPremiumRole) {
+      userLevel = 3; // Level 3: 프리미엄/VIP (주황색)
+    } else if (hasBasicRole) {
+      userLevel = 2; // Level 2: 기본 인증 (초록색)
+    } else {
+      userLevel = 1; // Level 1: 채널만 (빨간색)
+    }
+  }
+
   res.json({
     authenticated,
     authorized: authenticated ? Boolean(req.session.authorized) : false,
     isOrganizer,
+    userLevel, // ⭐️ 프로필 테두리 색상용
     user: req.session.user || null,
     guild: req.session.guild || null,
   });
