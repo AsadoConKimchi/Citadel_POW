@@ -1104,18 +1104,24 @@ const getDonatedSatsByScope = ({ scope, dateKey } = {}) =>
     return sum + Number(entry.sats || 0);
   }, 0);
 
-const getDonationSatsForScope = () => {
-  // ⭐️ 적립 후 기부 모드: 백엔드 적립액 사용 (하이브리드 시스템)
-  if (getDonationScopeValue() === "total") {
-    return backendAccumulatedSats;
-  }
-
-  // 즉시 기부 모드: 현재 세션 sats 계산
+// ⭐️ 방안 A: 현재 세션의 sats 계산 (B - 오늘 받을 용돈)
+const getCurrentSessionSats = () => {
   const rate = parseSatsRate(satsRateInput?.value);
   return calculateSats({
     rate,
     seconds: getDonationSeconds(),
   });
+};
+
+// ⭐️ 방안 A: UI 표시 및 계산용 함수
+const getDonationSatsForScope = () => {
+  // 적립 후 기부 모드: 백엔드 적립액 사용 (A' - 저금통 총액)
+  if (getDonationScopeValue() === "total") {
+    return backendAccumulatedSats;
+  }
+
+  // 즉시 기부 모드: 현재 세션 sats 계산 (B)
+  return getCurrentSessionSats();
 };
 
 const getDonationPaymentSnapshot = () => {
@@ -2884,11 +2890,15 @@ const shareToDiscordOnly = async () => {
     return;
   }
 
-  // 기부 정보 수집
+  // ⭐️ 방안 A: 기부 정보 수집
   const donationScopeValue = getDonationScopeValue();
-  const donationSats = getDonationSatsForScope();
+  // Discord 공유 시에는 항상 현재 세션 sats(B) 사용
+  const donationSats = getCurrentSessionSats();
   const totalDonatedSats = getTotalDonatedSats();
-  const totalAccumulatedSats = donationScopeValue === "total" ? donationSats : 0;
+  // 총 적립액은 기존 적립액 + 현재 세션 sats
+  const totalAccumulatedSats = donationScopeValue === "total"
+    ? backendAccumulatedSats + donationSats
+    : 0;
 
   // Bot이 기대하는 형식으로 데이터 준비
   const botPayload = {
