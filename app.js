@@ -507,6 +507,11 @@ const resetTimer = () => {
   currentDonationSats = 0;
   currentDonationPayload = null;
 
+  // ⭐️ 모달 dataset invoice 초기화 (예전 invoice 재사용 방지)
+  if (walletModal) {
+    walletModal.dataset.invoice = "";
+  }
+
   updateDisplay();
   updateSats();
   setDonationControlsEnabled(true);
@@ -914,6 +919,11 @@ const finishSession = () => {
   currentDonationScope = null;
   currentDonationSats = 0;
   currentDonationPayload = null;
+
+  // ⭐️ 모달 dataset invoice 초기화 (예전 invoice 재사용 방지)
+  if (walletModal) {
+    walletModal.dataset.invoice = "";
+  }
 
   updateDisplay();
   updateTotals();
@@ -1972,9 +1982,9 @@ const startPaymentPolling = () => {
   }
 
   let attemptCount = 0;
-  const MAX_ATTEMPTS = 30; // 60초 (2초 간격 × 30회)
+  const MAX_ATTEMPTS = 40; // 120초 (3초 간격 × 40회)
 
-  console.log('🚀 결제 확인 polling 시작 (최대 30회, 60초)');
+  console.log('🚀 결제 확인 polling 시작 (최대 40회, 120초)');
 
   paymentPollingInterval = setInterval(async () => {
     attemptCount++;
@@ -2041,9 +2051,9 @@ const startPaymentPolling = () => {
         }
       }
 
-      // ⭐️ 타임아웃 체크 (30회 실패 시 모달)
+      // ⭐️ 타임아웃 체크 (40회 실패 시 모달)
       if (attemptCount >= MAX_ATTEMPTS) {
-        console.log('⏱️ Polling 타임아웃 (30회 실패, 60초 경과)');
+        console.log('⏱️ Polling 타임아웃 (40회 실패, 120초 경과)');
         clearInterval(paymentPollingInterval);
         paymentPollingInterval = null;
 
@@ -2054,7 +2064,7 @@ const startPaymentPolling = () => {
       console.error('❌ Polling 오류:', error);
       // 다음 polling 계속
     }
-  }, 2000); // 2초 간격
+  }, 3000); // 3초 간격
 };
 
 // ⭐️ 결제 실패 모달 표시
