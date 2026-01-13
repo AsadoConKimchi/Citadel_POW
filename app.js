@@ -92,13 +92,13 @@ let sessionPage = 1;
 let donationPage = 1;
 let donationHistoryPage = 1;
 const pendingDailyKey = "citadel-pending-daily";
-let hasPromptedDaily = false;
 let walletToastTimeout = null;
 let currentDiscordId = null; // 현재 로그인한 사용자의 Discord ID
 let pendingDailyCache = null; // API 호출 결과 캐시
 let sessionsCache = null; // POW 세션 캐시
 let donationsCache = null; // 기부 기록 캐시
 let backendAccumulatedSats = 0; // 백엔드에서 조회한 적립액 (하이브리드 시스템)
+let currentSession = null; // 현재 세션 (메모리 변수, localStorage 제거)
 
 const donationControls = [
   donationScope,
@@ -131,7 +131,7 @@ if (toggleButtons.length > 0) {
 
   // 토글 버튼 클릭 이벤트
   toggleButtons.forEach(button => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       // 모든 버튼에서 active 클래스 제거
       toggleButtons.forEach(btn => btn.classList.remove('active'));
       // 클릭한 버튼에 active 클래스 추가
@@ -140,8 +140,22 @@ if (toggleButtons.length > 0) {
       const value = button.getAttribute('data-value');
       if (donationScope) {
         donationScope.value = value;
-        // localStorage에 저장
+        // localStorage에 캐시 (백엔드 실패 시 폴백)
         localStorage.setItem(donationScopeKey, value);
+
+        // ⭐️ 백엔드에 저장
+        if (currentDiscordId && typeof UserAPI !== 'undefined') {
+          try {
+            await UserAPI.updateSettings(currentDiscordId, {
+              donation_scope: value,
+            });
+            console.log(`✅ donation_scope를 백엔드에 저장: ${value}`);
+          } catch (error) {
+            console.error('donation_scope 백엔드 저장 실패:', error);
+            // 실패해도 localStorage는 유지
+          }
+        }
+
         // 기존 change 이벤트 트리거
         donationScope.dispatchEvent(new Event('change'));
       }
@@ -271,13 +285,14 @@ const getCurrentGoalMinutes = () => parseGoalMinutes();
 
 const getGoalProgress = (totalSeconds) => getGoalProgressFor(totalSeconds, getCurrentGoalMinutes());
 
-const getStoredTotal = () => {
-  const saved = Number(localStorage.getItem(`citadel-total-${todayKey}`) || 0);
-  return Number.isNaN(saved) ? 0 : saved;
-};
-
-const setStoredTotal = (value) => {
-  localStorage.setItem(`citadel-total-${todayKey}`, String(value));
+// ⭐️ 백엔드에서 오늘의 총 공부 시간 계산 (localStorage 제거)
+const getTotalSecondsToday = () => {
+  if (!sessionsCache || !Array.isArray(sessionsCache)) {
+    return 0;
+  }
+  return sessionsCache.reduce((sum, session) => {
+    return sum + (session.durationSeconds || 0);
+  }, 0);
 };
 
 const normalizeInvoice = (invoice) => {
@@ -354,7 +369,7 @@ const loadPendingDailyFromAPI = async () => {
 // };
 
 const updateTotals = () => {
-  const totalSeconds = getStoredTotal();
+  const totalSeconds = getTotalSecondsToday();
   if (totalTodayEl) {
     totalTodayEl.textContent = formatTime(totalSeconds);
   }
@@ -483,14 +498,13 @@ const loadSessionsFromAPI = async () => {
     if (response.success && response.data) {
       // API 응답을 localStorage 형식으로 변환
       const sessions = response.data.map(apiSession => {
-        const durationSeconds = apiSession.duration_minutes * 60;
-        // goalMinutes는 API에 없으므로 durationMinutes 사용 (임시)
-        const goalMinutes = apiSession.duration_minutes;
+        const durationSeconds = apiSession.duration_seconds || (apiSession.duration_minutes * 60);
+        const goalMinutes = apiSession.goal_minutes || 0;
         return {
           durationSeconds,
           goalMinutes,
           plan: apiSession.plan_text || "",
-          achieved: true, // API 데이터는 이미 완료된 세션
+          achieved: apiSession.achievement_rate >= 100, // 달성 여부
           timestamp: apiSession.created_at,
           sessionId: apiSession.id,
         };
@@ -575,26 +589,31 @@ const saveSessions = (sessions, key = sessionsKey) => {
   sessionsCache = sessions;
 };
 
+// ⭐️ 메모리 변수 사용 (localStorage 제거, 백엔드가 Source of Truth)
 const getLastSessionSeconds = () => {
-  try {
-    const raw = localStorage.getItem(lastSessionKey);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (!parsed) {
-      return { durationSeconds: 0, goalMinutes: 0, plan: "", sessionId: "" };
-    }
-    return {
-      durationSeconds: Number(parsed.durationSeconds || 0),
-      goalMinutes: Number(parsed.goalMinutes || 0),
-      plan: parsed.plan || "",
-      sessionId: parsed.sessionId || "",
-    };
-  } catch (error) {
-    return { durationSeconds: 0, goalMinutes: 0, plan: "", sessionId: "" };
+  // 메모리 변수에 있으면 반환
+  if (currentSession) {
+    return currentSession;
   }
+
+  // 메모리에 없으면 sessionsCache에서 최근 세션 가져오기
+  if (sessionsCache && sessionsCache.length > 0) {
+    const latestSession = sessionsCache[sessionsCache.length - 1];
+    return {
+      durationSeconds: latestSession.durationSeconds || 0,
+      goalMinutes: latestSession.goalMinutes || 0,
+      plan: latestSession.plan || "",
+      sessionId: latestSession.sessionId || "",
+    };
+  }
+
+  // 없으면 기본값
+  return { durationSeconds: 0, goalMinutes: 0, plan: "", sessionId: "" };
 };
 
 const setLastSessionSeconds = (value) => {
-  localStorage.setItem(lastSessionKey, JSON.stringify(value));
+  // 메모리 변수에만 저장 (localStorage 제거)
+  currentSession = value;
 };
 
 const renderSessionItems = (sessions, listEl, emptyEl, { startIndex = 0 } = {}) => {
@@ -828,8 +847,7 @@ const finishSession = () => {
   }
 
   sessionPage = Math.ceil(sessions.length / 2);
-  const total = getStoredTotal() + elapsedSeconds;
-  setStoredTotal(total);
+  // ⭐️ setStoredTotal() 제거 - 백엔드에서 자동 계산
   setLastSessionSeconds({ durationSeconds: elapsedSeconds, goalMinutes, plan, sessionId });
   if (donationScope?.value === "total") {
     const pending = getPendingDaily();
@@ -984,7 +1002,7 @@ const getDonationSeconds = () => {
     return entry ? entry.seconds : 0;
   }
   if (scope === "daily") {
-    const available = getStoredTotal() - getDonatedSecondsByScope({ scope, dateKey: todayKey });
+    const available = getTotalSecondsToday() - getDonatedSecondsByScope({ scope, dateKey: todayKey });
     return Math.max(0, available);
   }
   const available = getAllSessionsTotalSeconds() - getDonatedSecondsByScope({ scope });
@@ -1409,75 +1427,63 @@ const saveDonationHistoryEntry = async ({
   renderDonationHistory();
 };
 
+// ============================================
+// 구버전 localStorage → 백엔드 자동 마이그레이션
+// ============================================
 const promptPendingDailyDonation = async () => {
-  if (!badgeCanvas || !shareDiscordButton) {
+  // sessionStorage로 중복 방지 (탭 전환 시 팝업 안 뜸)
+  if (sessionStorage.getItem('hasPromptedDaily')) {
     return;
   }
+
   const pending = getPendingDaily();
   const dates = Object.keys(pending).sort();
   const pendingDate = dates.find((date) => date < todayKey);
+
   if (!pendingDate) {
+    sessionStorage.setItem('hasPromptedDaily', 'true');
     return;
   }
+
   const entry = pending[pendingDate];
   if (!entry || entry.sats <= 0) {
+    sessionStorage.setItem('hasPromptedDaily', 'true');
     return;
   }
-  const confirmDonation = window.confirm(
-    `${pendingDate} 누적 기부 ${entry.sats} sats가 있습니다. 지금 기부하고 POW를 시작할까요?`
-  );
-  if (!confirmDonation) {
-    return;
-  }
-  const sessionData = {
-    durationSeconds: entry.seconds || 0,
-    goalMinutes: entry.goalMinutes || parseGoalMinutes(),
-    plan: entry.plan || `${pendingDate} 누적 POW`,
-  };
-  drawBadge(sessionData);
-  const dataUrl = getBadgeDataUrl();
-  const totalMinutes = Math.floor((entry.seconds || 0) / 60);
-  const achievementRate = sessionData.goalMinutes > 0
-    ? Math.round((totalMinutes / sessionData.goalMinutes) * 100)
-    : 0;
-  const totalDonatedSats = getTotalDonatedSats() + entry.sats;
 
-  const payload = buildDonationPayload({
-    dataUrl: dataUrl,
-    plan: sessionData.plan,
-    durationSeconds: sessionData.durationSeconds,
-    goalMinutes: sessionData.goalMinutes,
-    sats: entry.sats,
-    donationModeValue: entry.mode || "pow-writing",
-    donationScopeValue: "daily",
-    donationNoteValue: entry.note || "",
-  });
-  await openLightningWalletWithPayload(payload, {
-    onSuccess: () => {
-      saveDonationHistoryEntry({
-        date: pendingDate,
-        sats: entry.sats,
-        minutes: totalMinutes,
-        seconds: entry.seconds || 0,
-        mode: entry.mode || "pow-writing",
-        scope: "daily",
-        note: entry.note || "",
-        isPaid: true,
-        // POW 정보
-        planText: sessionData.plan,
-        goalMinutes: sessionData.goalMinutes,
-        achievementRate: achievementRate,
-        photoUrl: dataUrl,
-        // 누적 정보
-        accumulatedSats: 0,
-        totalAccumulatedSats: 0,
-        totalDonatedSats: totalDonatedSats,
-      });
+  // ⭐️ 백엔드로 자동 마이그레이션
+  if (currentDiscordId && typeof AccumulatedSatsAPI !== 'undefined') {
+    try {
+      const result = await AccumulatedSatsAPI.add(
+        currentDiscordId,
+        entry.sats,
+        null,
+        `구버전 적립액 마이그레이션 (${pendingDate})`
+      );
+
+      console.log(`✅ ${entry.sats}sats를 백엔드로 마이그레이션 완료`);
+
+      // localStorage 정리
       delete pending[pendingDate];
-      // localStorage만 정리 (즉시 기부는 적립액과 무관)
       localStorage.setItem(pendingDailyKey, JSON.stringify(pending));
-    },
-  });
+
+      // 백엔드 적립액 UI 업데이트
+      if (result.success && result.data) {
+        backendAccumulatedSats = result.data.amount_after;
+        localStorage.setItem('citadel-backend-accumulated-sats', backendAccumulatedSats.toString());
+        updateAccumulatedSats();
+      }
+
+      // 사용자 알림
+      showAccumulationToast(`적립된 ${entry.sats} sats가 백엔드로 이동되었습니다. "오늘 기부 현황"에서 확인할 수 있습니다.`);
+    } catch (error) {
+      console.error('마이그레이션 실패:', error);
+      alert(`적립액 마이그레이션에 실패했습니다: ${error.message || '알 수 없는 오류'}`);
+    }
+  }
+
+  // 중복 방지 플래그 설정 (sessionStorage)
+  sessionStorage.setItem('hasPromptedDaily', 'true');
 };
 
 const buildDonationPayload = ({
@@ -2445,6 +2451,36 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
   if (user && user.id) {
     currentDiscordId = user.id;
 
+    // ⭐️ 백엔드에서 사용자 설정 로드 (donation_scope 등)
+    if (typeof UserAPI !== 'undefined') {
+      UserAPI.get(currentDiscordId)
+        .then(response => {
+          if (response.success && response.data) {
+            const { donation_scope } = response.data;
+            if (donation_scope && donationScope) {
+              // 백엔드 값으로 UI 업데이트
+              donationScope.value = donation_scope;
+              localStorage.setItem(donationScopeKey, donation_scope);
+
+              // 토글 버튼 UI 업데이트
+              toggleButtons.forEach(btn => {
+                if (btn.getAttribute('data-value') === donation_scope) {
+                  btn.classList.add('active');
+                } else {
+                  btn.classList.remove('active');
+                }
+              });
+
+              console.log(`✅ 백엔드에서 donation_scope 로드: ${donation_scope}`);
+            }
+          }
+        })
+        .catch(error => {
+          console.error('사용자 설정 로드 실패:', error);
+          // 실패 시 localStorage 값 사용 (이미 초기화됨)
+        });
+    }
+
     // 모든 데이터를 병렬로 API에서 로드
     Promise.all([
       loadPendingDailyFromAPI(),
@@ -2466,8 +2502,8 @@ const setAuthState = ({ authenticated, authorized, user, guild, error }) => {
     });
   }
 
-  if (!hasPromptedDaily) {
-    hasPromptedDaily = true;
+  // 구버전 localStorage 데이터를 백엔드로 자동 마이그레이션
+  if (!sessionStorage.getItem('hasPromptedDaily')) {
     promptPendingDailyDonation();
   }
 };

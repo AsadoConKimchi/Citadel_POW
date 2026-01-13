@@ -64,6 +64,14 @@ const UserAPI = {
   async getStats(discordId) {
     return apiRequest(`/api/users/${discordId}/stats`);
   },
+
+  // 사용자 설정 업데이트
+  async updateSettings(discordId, settings) {
+    return apiRequest(`/api/users/${discordId}/settings`, {
+      method: 'PATCH',
+      body: JSON.stringify(settings),
+    });
+  },
 };
 
 /**
