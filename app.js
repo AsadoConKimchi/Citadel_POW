@@ -2106,13 +2106,45 @@ const showPaymentFailedModal = async () => {
         const checkResult = await checkResponse.json();
 
         if (checkResult?.success && checkResult.data?.paid) {
-          // 결제 확인 성공
-          console.log('✅ 재확인 성공!');
-          await pendingOnSuccessCallback();
-          closeWalletSelection();
-          showAccumulationToast("기부가 완료되었습니다! 🎉");
-          updateAccumulatedSats();
-          updateTodayDonationSummary();
+          // ✅ 재확인 성공 - callback 실행
+          console.log('✅ 재확인 성공 - pendingOnSuccessCallback 실행');
+
+          if (pendingOnSuccessCallback) {
+            await pendingOnSuccessCallback();
+            // pendingOnSuccessCallback은 페이지 새로고침을 포함하므로
+            // 이 이후 코드는 실행되지 않을 수 있음
+          }
+
+          // 상태 초기화
+          pendingOnSuccessCallback = null;
+          currentInvoice = null;
+          currentDonationScope = null;
+          currentDonationSats = 0;
+          currentDonationPayload = null;
+
+          // Polling 중단
+          if (paymentPollingInterval) {
+            clearInterval(paymentPollingInterval);
+            paymentPollingInterval = null;
+          }
+
+          // 모달 닫기 (closeWalletSelection 호출하지 않음 - 중복 방지)
+          if (walletModal) {
+            walletModal.classList.add("hidden");
+            walletModal.setAttribute("aria-hidden", "true");
+            walletModal.dataset.invoice = "";
+          }
+
+          // 모달 UI 초기화
+          if (walletStatus) {
+            walletStatus.textContent = "선택한 지갑으로 인보이스를 전달합니다.";
+          }
+          renderWalletInvoice("");
+          setWalletOptionsEnabled(true);
+          if (walletToast) {
+            walletToast.classList.add("hidden");
+          }
+
           return;
         }
       }
@@ -3155,7 +3187,7 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-// 타이머 복원 함수 (백그라운드 동작 지원)
+// ⭐️ 타이머 복원 함수 (백그라운드 동작 지원)
 const restoreTimerState = () => {
   const savedEndTime = localStorage.getItem('citadel-timer-end');
   const savedGoal = localStorage.getItem('citadel-timer-goal');
@@ -3165,18 +3197,28 @@ const restoreTimerState = () => {
     const now = Date.now();
 
     if (now < timerEndTime) {
-      // 아직 목표 시간 전 - 경과 시간 복원
+      // 아직 목표 시간 전 - 경과 시간 복원 및 자동 재시작
       const goalMinutes = parseInt(savedGoal, 10) || 0;
       const totalDuration = goalMinutes * 60 * 1000;
       const elapsed = totalDuration - (timerEndTime - now);
       elapsedSeconds = Math.floor(elapsed / 1000);
       elapsedOffsetSeconds = elapsedSeconds;
 
-      // 타이머는 자동으로 재시작하지 않음 (사용자가 "재개" 클릭해야 함)
+      // ⭐️ 타이머 자동 재시작
+      isRunning = true;
+      timerStartTime = Date.now();
+      timerInterval = setInterval(tick, 1000);
+
+      // UI 업데이트
       updateDisplay();
       updateSats();
+      setDonationControlsEnabled(false);
+      setPauseButtonLabel("일시정지");  // 버튼을 "일시정지"로 변경
 
-      console.log(`⏱️ 타이머 복원: ${Math.floor(elapsedSeconds / 60)}분 ${elapsedSeconds % 60}초 경과`);
+      // 타이머 모달 자동 열기
+      openTimerModal();
+
+      console.log(`⏱️ 타이머 복원 및 재시작: ${Math.floor(elapsedSeconds / 60)}분 ${elapsedSeconds % 60}초 경과`);
     } else {
       // 목표 시간 초과 - 목표 시간으로 설정
       const goalMinutes = parseInt(savedGoal, 10) || 0;
@@ -3190,6 +3232,7 @@ const restoreTimerState = () => {
 
       updateDisplay();
       updateSats();
+      setPauseButtonLabel("일시정지");
 
       console.log(`⏱️ 타이머 복원: 목표 시간(${goalMinutes}분) 도달`);
     }
