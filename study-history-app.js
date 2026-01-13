@@ -39,25 +39,35 @@ let currentUser = null;
 // ============================================
 
 /**
- * 현재 주차 기간 계산 (ISO 8601 기준)
- * @returns {string} "2025년 1월 2주차" 형식
+ * 현재 주차 기간 계산 (월요일 00:00 ~ 일요일 23:59)
+ * @returns {string} "25.01.06 00:00 ~ 25.01.12 23:59" 형식
  */
 function getCurrentWeekPeriod() {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1; // 0부터 시작하므로 +1
+  const dayOfWeek = now.getDay(); // 0(일요일) ~ 6(토요일)
 
-  // ISO 8601 주차 계산 (월요일 시작)
-  const startOfYear = new Date(year, 0, 1);
-  const days = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
-  const isoWeek = Math.ceil((days + startOfYear.getDay() + 1) / 7);
+  // 월요일 계산 (0=일요일이므로 특별 처리)
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + mondayOffset);
+  monday.setHours(0, 0, 0, 0);
 
-  // 해당 월의 몇 번째 주인지 계산
-  const startOfMonth = new Date(year, month - 1, 1);
-  const daysInMonth = Math.floor((now - startOfMonth) / (24 * 60 * 60 * 1000));
-  const weekOfMonth = Math.ceil((daysInMonth + startOfMonth.getDay() + 1) / 7);
+  // 일요일 계산
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
 
-  return `${year}년 ${month}월 ${weekOfMonth}주차`;
+  // 날짜 포맷팅 함수
+  const formatDate = (date) => {
+    const yy = String(date.getFullYear()).slice(-2);
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    return `${yy}.${mm}.${dd} ${hh}:${min}`;
+  };
+
+  return `${formatDate(monday)} ~ ${formatDate(sunday)}`;
 }
 
 /**

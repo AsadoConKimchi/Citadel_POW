@@ -456,7 +456,7 @@ const startTimer = () => {
   elapsedOffsetSeconds = elapsedSeconds;
 
   // ⭐️ 종료시간 계산 및 저장 (백그라운드 동작 지원)
-  const goalMinutes = parseInt(goalMinutesInput?.value) || 0;
+  const goalMinutes = parseInt(goalInput?.value) || 0;
   if (goalMinutes > 0 && elapsedSeconds === 0) {
     // 새로 시작하는 경우에만 종료시간 계산
     timerEndTime = Date.now() + (goalMinutes * 60 * 1000);
@@ -467,7 +467,12 @@ const startTimer = () => {
     localStorage.setItem('citadel-timer-end', timerEndTime.toString());
   }
 
+  // interval 중복 방지
+  if (timerInterval) {
+    clearInterval(timerInterval);
+  }
   timerInterval = setInterval(tick, 1000);
+
   setDonationControlsEnabled(false);
   setPauseButtonLabel("일시정지");
   setResetButtonLabel("리셋");
@@ -1967,9 +1972,9 @@ const startPaymentPolling = () => {
   }
 
   let attemptCount = 0;
-  const MAX_ATTEMPTS = 3; // 9초 (3초 간격 × 3회)
+  const MAX_ATTEMPTS = 30; // 60초 (2초 간격 × 30회)
 
-  console.log('🚀 결제 확인 polling 시작 (최대 3회)');
+  console.log('🚀 결제 확인 polling 시작 (최대 30회, 60초)');
 
   paymentPollingInterval = setInterval(async () => {
     attemptCount++;
@@ -2036,9 +2041,9 @@ const startPaymentPolling = () => {
         }
       }
 
-      // ⭐️ 타임아웃 체크 (3회 실패 시 모달)
+      // ⭐️ 타임아웃 체크 (30회 실패 시 모달)
       if (attemptCount >= MAX_ATTEMPTS) {
-        console.log('⏱️ Polling 타임아웃 (3회 실패)');
+        console.log('⏱️ Polling 타임아웃 (30회 실패, 60초 경과)');
         clearInterval(paymentPollingInterval);
         paymentPollingInterval = null;
 
@@ -2049,7 +2054,7 @@ const startPaymentPolling = () => {
       console.error('❌ Polling 오류:', error);
       // 다음 polling 계속
     }
-  }, 3000); // 3초 간격
+  }, 2000); // 2초 간격
 };
 
 // ⭐️ 결제 실패 모달 표시
