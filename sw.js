@@ -3,7 +3,7 @@
  * iOS 17+ PWA Push 알림 및 캐싱 지원
  */
 
-const CACHE_NAME = 'citadel-pow-v3';
+const CACHE_NAME = 'citadel-pow-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -235,6 +235,9 @@ async function checkTimerStatus() {
   }
 }
 
+// 예약된 알림 타이머 ID 저장
+let scheduledNotificationTimer = null;
+
 // 메시지 수신 (클라이언트 → SW)
 self.addEventListener('message', (event) => {
   console.log('[SW] Message received:', event.data);
@@ -244,8 +247,14 @@ self.addEventListener('message', (event) => {
   }
 
   if (event.data && event.data.type === 'SCHEDULE_NOTIFICATION') {
+    // 기존 예약 취소
+    if (scheduledNotificationTimer) {
+      clearTimeout(scheduledNotificationTimer);
+      scheduledNotificationTimer = null;
+    }
+
     const { title, body, delay } = event.data;
-    setTimeout(() => {
+    scheduledNotificationTimer = setTimeout(() => {
       self.registration.showNotification(title, {
         body,
         icon: '/icons/icon-192.png',
@@ -254,7 +263,18 @@ self.addEventListener('message', (event) => {
         requireInteraction: true,
         tag: 'pow-timer-complete',
       });
+      scheduledNotificationTimer = null;
     }, delay);
+    console.log(`[SW] 알림 예약됨: ${Math.round(delay / 1000)}초 후`);
+  }
+
+  // 알림 취소 (POW 조기 종료 시)
+  if (event.data && event.data.type === 'CANCEL_NOTIFICATION') {
+    if (scheduledNotificationTimer) {
+      clearTimeout(scheduledNotificationTimer);
+      scheduledNotificationTimer = null;
+      console.log('[SW] 예약된 알림 취소됨');
+    }
   }
 });
 

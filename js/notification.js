@@ -176,6 +176,24 @@ export const scheduleNotification = async (goalMinutes, endTime) => {
   }
 };
 
+// 예약된 알림 취소 (POW 조기 종료 시)
+export const cancelScheduledNotification = () => {
+  // localStorage에서 제거
+  localStorage.removeItem('citadel-pending-notification');
+
+  // Service Worker에 취소 메시지 전송
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    try {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'CANCEL_NOTIFICATION',
+      });
+      console.log('📅 예약된 알림 취소됨');
+    } catch (error) {
+      console.error('알림 취소 실패:', error);
+    }
+  }
+};
+
 // Service Worker 등록
 export const registerServiceWorker = async () => {
   if (!('serviceWorker' in navigator)) {

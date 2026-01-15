@@ -577,13 +577,16 @@ const shareToDiscordOnly = async () => {
     }
 
     // Algorithm v3: 적립 후 기부 모드 - 백엔드에 적립액 저장
-    // PARTIAL UNIQUE 제약조건으로 중복 적립 방지
     if (donationScopeValue === "total" && currentDiscordId) {
       try {
+        // BUG FIX: 프론트엔드 sessionId는 UUID 형식이 아니므로 null 전달
+        // 프론트엔드 sessionId: "1736946830000-abc123" (로컬 생성)
+        // 백엔드 기대값: UUID 형식 또는 null
+        // 두 ID가 서로 다르므로 중복 방지 로직도 작동하지 않음
         const result = await AccumulatedSatsAPI.add(
           currentDiscordId,
           donationSats,
-          lastSession.sessionId || null, // session_id로 중복 체크
+          null, // sessionId는 null로 전달 (UUID 형식 불일치 문제 해결)
           donationNote?.value?.trim() || null
         );
 
@@ -592,13 +595,7 @@ const shareToDiscordOnly = async () => {
           console.log(`✅ 적립액 저장 성공: ${result.data.amount_after} sats`);
         }
       } catch (error) {
-        // BUG FIX: 에러 메시지로 중복 체크 (error.code는 없음)
-        const errorMessage = error?.message || String(error);
-        if (errorMessage.includes('DUPLICATE') || errorMessage.includes('unique') || errorMessage.includes('Already accumulated')) {
-          console.log('이미 적립된 세션입니다.');
-        } else {
-          console.error('적립액 저장 실패:', error);
-        }
+        console.error('적립액 저장 실패:', error);
       }
     }
 

@@ -5,7 +5,7 @@
 
 import { formatTime, parseGoalMinutes, getGoalProgressFor } from './utils.js';
 import { getStorageKeys, loadSessions, saveSessions, setLastSessionSeconds, getTotalSecondsToday } from './storage.js';
-import { notifyTimerComplete, scheduleNotification, requestNotificationPermission, playNotificationSound, vibrate } from './notification.js';
+import { notifyTimerComplete, scheduleNotification, cancelScheduledNotification, requestNotificationPermission, playNotificationSound, vibrate } from './notification.js';
 
 // 타이머 상태
 export let timerInterval = null;
@@ -232,6 +232,9 @@ export const finishSession = (additionalData = {}) => {
   }
 
   pauseTimer();
+
+  // BUG FIX: 예약된 알림 취소 (조기 종료 시)
+  cancelScheduledNotification();
 
   // BUG FIX: 타이머 localStorage 키 정리 (페이지 리로드 시 타이머 재시작 방지)
   const { timerEndKey, timerGoalKey } = getStorageKeys();
