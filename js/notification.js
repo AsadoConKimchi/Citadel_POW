@@ -146,14 +146,34 @@ export const checkPendingNotification = () => {
   return null;
 };
 
-// 백그라운드에서 알림 예약 (localStorage에 저장)
-export const scheduleNotification = (goalMinutes, endTime) => {
+// 백그라운드에서 알림 예약 (Service Worker + localStorage)
+export const scheduleNotification = async (goalMinutes, endTime) => {
   const notification = {
     title: '🎉 POW 목표 달성!',
     body: `${goalMinutes}분 목표를 달성했습니다.`,
     scheduledTime: endTime,
   };
+
+  // localStorage에도 저장 (앱이 포그라운드로 돌아왔을 때 확인용)
   localStorage.setItem('citadel-pending-notification', JSON.stringify(notification));
+
+  // BUG FIX: Service Worker에 알림 예약 메시지 전송
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    try {
+      const delay = endTime - Date.now();
+      if (delay > 0) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SCHEDULE_NOTIFICATION',
+          title: notification.title,
+          body: notification.body,
+          delay: delay,
+        });
+        console.log(`📅 Service Worker에 알림 예약됨: ${Math.round(delay / 1000)}초 후`);
+      }
+    } catch (error) {
+      console.error('Service Worker 알림 예약 실패:', error);
+    }
+  }
 };
 
 // Service Worker 등록

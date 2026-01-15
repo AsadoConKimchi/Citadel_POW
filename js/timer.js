@@ -233,6 +233,12 @@ export const finishSession = (additionalData = {}) => {
 
   pauseTimer();
 
+  // BUG FIX: 타이머 localStorage 키 정리 (페이지 리로드 시 타이머 재시작 방지)
+  const { timerEndKey, timerGoalKey } = getStorageKeys();
+  localStorage.removeItem(timerEndKey);
+  localStorage.removeItem(timerGoalKey);
+  timerEndTime = null;
+
   const goalMinutes = getCurrentGoalMinutes();
   const achieved = goalMinutes > 0 ? elapsedSeconds >= goalMinutes * 60 : false;
   const sessionId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;

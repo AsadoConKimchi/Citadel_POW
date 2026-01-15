@@ -589,10 +589,12 @@ const shareToDiscordOnly = async () => {
 
         if (result.success && result.data) {
           setBackendAccumulatedSats(result.data.amount_after);
+          console.log(`✅ 적립액 저장 성공: ${result.data.amount_after} sats`);
         }
       } catch (error) {
-        // Algorithm v3: DUPLICATE_SESSION 에러는 이미 적립된 경우
-        if (error?.code === 'DUPLICATE_SESSION') {
+        // BUG FIX: 에러 메시지로 중복 체크 (error.code는 없음)
+        const errorMessage = error?.message || String(error);
+        if (errorMessage.includes('DUPLICATE') || errorMessage.includes('unique') || errorMessage.includes('Already accumulated')) {
           console.log('이미 적립된 세션입니다.');
         } else {
           console.error('적립액 저장 실패:', error);

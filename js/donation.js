@@ -585,7 +585,13 @@ export const launchWallet = async (walletKey) => {
 
     const deepLinkBuilder = walletDeepLinks[walletKey];
     const deepLink = deepLinkBuilder ? deepLinkBuilder(invoice) : `lightning:${invoice}`;
-    closeWalletSelection();
+
+    // BUG FIX: 모달을 닫지 않고 지갑만 열기 (polling 유지)
+    // closeWalletSelection() 호출 제거 - polling이 계속 실행되어야 결제 확인 가능
+    if (walletStatus) {
+      walletStatus.textContent = "지갑 앱에서 결제를 완료해주세요. 결제 확인 중...";
+    }
+
     window.location.href = deepLink;
   } catch (error) {
     if (walletStatus) {
