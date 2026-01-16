@@ -540,7 +540,7 @@ const loadSessionsFromAPI = async () => {
         return {
           durationSeconds,
           goalMinutes,
-          plan: apiSession.plan_text || "",
+          plan: apiSession.pow_plan_text || "",
           achieved: apiSession.achievement_rate >= 100, // 달성 여부
           timestamp: apiSession.created_at,
           sessionId: apiSession.id,
@@ -597,8 +597,8 @@ const loadDonationsFromAPI = async () => {
           sats: apiDonation.amount || 0,
           minutes: apiDonation.duration_minutes || Math.floor((apiDonation.duration_seconds || 0) / 60),
           seconds: apiDonation.duration_seconds || 0,
-          mode: apiDonation.donation_mode || 'pow-writing',
-          scope: apiDonation.donation_scope || 'session',
+          mode: apiDonation.pow_fields || 'pow-writing',
+          scope: apiDonation.donation_mode || 'session',
           sessionId: apiDonation.session_id || '',
           note: apiDonation.note || apiDonation.message || '',
           isPaid: apiDonation.status === 'completed',
@@ -894,8 +894,8 @@ const finishSession = () => {
         const sessionData = await res.json();
         if (sessionData.authenticated && sessionData.user?.id) {
           await StudySessionAPI.create(sessionData.user.id, {
-            donationMode: currentMode,
-            planText: planWithCategory,
+            powFields: currentMode,
+            powPlanText: planWithCategory,
             startTime: startTime.toISOString(),
             endTime: endTime.toISOString(),
             durationSeconds: elapsedSeconds,
@@ -1502,12 +1502,12 @@ const saveDonationHistoryEntry = async ({
         date: date,
         durationSeconds: seconds,
         durationMinutes: minutes,
-        donationMode: mode,
-        donationScope: scope,
+        powFields: mode,
+        donationMode: scope,
         sessionId: sessionId,
         note: note,
         // POW 정보
-        planText: planText,
+        powPlanText: planText,
         goalMinutes: goalMinutes,
         achievementRate: achievementRate,
         photoUrl: photoUrl,
@@ -3115,15 +3115,15 @@ const shareToDiscordAPI = async ({
     throw new Error("로그인이 필요합니다.");
   }
 
-  // Bot이 기대하는 형식으로 데이터 준비
+  // Bot이 기대하는 형식으로 데이터 준비 (백엔드 스키마와 일치)
   const botPayload = {
     discord_id: sessionData.user.id,
     session_id: sessionId,
     photo_url: dataUrl,
-    plan_text: planText || "목표 미입력",
-    donation_mode: donationMode?.value || "pow-writing",
+    pow_plan_text: planText || "목표 미입력",
+    pow_fields: donationMode?.value || "pow-writing",
     duration_seconds: durationSeconds || 0,
-    donation_scope: donationScope,
+    donation_mode: donationScope,
     donation_sats: donationSats,
     total_donated_sats: totalDonatedSats,
     total_accumulated_sats: totalAccumulatedSats,
@@ -3182,16 +3182,16 @@ const shareToDiscordOnly = async () => {
     ? backendAccumulatedSats + donationSats
     : 0;
 
-  // Bot이 기대하는 형식으로 데이터 준비
+  // Bot이 기대하는 형식으로 데이터 준비 (백엔드 스키마와 일치)
   const botPayload = {
     discord_id: sessionData.user.id,
     session_id: lastSession.sessionId,
     photo_url: dataUrl,
-    plan_text: lastSession.plan || "목표 미입력",
-    donation_mode: donationMode?.value || "pow-writing",
+    pow_plan_text: lastSession.plan || "목표 미입력",
+    pow_fields: donationMode?.value || "pow-writing",
     duration_seconds: lastSession.durationSeconds || 0,
     // 기부 정보 추가
-    donation_scope: donationScopeValue,
+    donation_mode: donationScopeValue,
     donation_sats: donationSats,
     total_donated_sats: totalDonatedSats,
     total_accumulated_sats: totalAccumulatedSats,

@@ -91,9 +91,9 @@ export const StudySessionAPI = {
     const payload = {
       discord_id: discordId,
 
-      // POW 정보 (새 필드명)
-      pow_fields: sessionData.donationMode || sessionData.powFields || 'pow-writing',
-      pow_plan_text: sessionData.planText || sessionData.powPlanText || '',
+      // POW 정보
+      pow_fields: sessionData.powFields || 'pow-writing',
+      pow_plan_text: sessionData.powPlanText || '',
 
       // 시간 정보
       start_time: sessionData.startTime,
@@ -131,12 +131,12 @@ export const StudySessionAPI = {
             duration_minutes: s.durationMinutes,
           };
 
-          // optional 필드는 값이 있을 때만 포함 (새 필드명)
-          if (s.planText || s.powPlanText) {
-            session.pow_plan_text = s.planText || s.powPlanText;
+          // optional 필드는 값이 있을 때만 포함
+          if (s.powPlanText) {
+            session.pow_plan_text = s.powPlanText;
           }
-          if (s.donationMode || s.powFields) {
-            session.pow_fields = s.donationMode || s.powFields;
+          if (s.powFields) {
+            session.pow_fields = s.powFields;
           }
           if (s.photoUrl) {
             session.photo_url = s.photoUrl;
@@ -176,15 +176,15 @@ export const DonationAPI = {
     const payload = {
       discord_id: discordId,
 
-      // 기부 정보 (새 필드명)
+      // 기부 정보
       amount: donationData.amount,
       currency: donationData.currency || 'SAT',
-      pow_fields: donationData.donationMode || donationData.powFields || 'pow-writing',
-      donation_mode: donationData.donationScope || donationData.scope || 'session',
+      pow_fields: donationData.powFields || 'pow-writing',
+      donation_mode: donationData.donationMode || 'session',
       note: donationData.note || null,
 
-      // POW 정보 (기부 시점 스냅샷) - 새 필드명
-      pow_plan_text: donationData.planText || donationData.powPlanText || null,
+      // POW 정보 (기부 시점 스냅샷)
+      pow_plan_text: donationData.powPlanText || null,
       duration_minutes: donationData.durationMinutes || null,
       duration_seconds: donationData.durationSeconds || null,
       goal_minutes: donationData.goalMinutes || null,
