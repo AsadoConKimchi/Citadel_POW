@@ -95,7 +95,9 @@ export const loadSessionsFromAPI = async () => {
           durationSeconds,
           goalSeconds,
           goalMinutes: apiSession.goal_minutes || Math.round(goalSeconds / 60),
-          plan: apiSession.plan_text || "",
+          // 새 필드명 매핑: pow_plan_text → plan, pow_fields → mode
+          plan: apiSession.pow_plan_text || apiSession.plan_text || "",
+          mode: apiSession.pow_fields || apiSession.donation_mode || "pow-writing",
           achieved: achievementRate >= 100,
           achievementRate,
           timestamp: apiSession.created_at,
@@ -151,8 +153,9 @@ export const loadDonationsFromAPI = async () => {
       const donations = response.user.donations.map(apiDonation => ({
         date: apiDonation.date || apiDonation.created_at.split('T')[0],
         sats: apiDonation.amount || 0,
-        mode: apiDonation.donation_mode || 'pow-writing',
-        scope: apiDonation.donation_scope || 'session',
+        // 새 필드명 매핑: pow_fields → mode, donation_mode → scope
+        mode: apiDonation.pow_fields || apiDonation.donation_mode || 'pow-writing',
+        scope: apiDonation.donation_mode || apiDonation.donation_scope || 'session',
         sessionId: apiDonation.session_id || '',
         note: apiDonation.note || apiDonation.message || '',
         // Algorithm v3: 'paid' 또는 'completed'는 모두 결제됨으로 처리

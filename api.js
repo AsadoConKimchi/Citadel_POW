@@ -78,20 +78,22 @@ export const UserAPI = {
 };
 
 /**
- * Algorithm v3: 공부 세션 API
+ * Algorithm v3: POW 세션 API
  * - achievement_rate: 저장 안함 (백엔드에서 런타임 계산)
  * - donation_id: 저장 안함 (donations.session_id로 단방향 참조)
  * - goal_seconds: 초 단위 지원
+ * - pow_fields: POW 분야 (pow-writing, pow-music 등)
+ * - pow_plan_text: 오늘의 목표
  */
 export const StudySessionAPI = {
-  // 공부 세션 생성
+  // POW 세션 생성
   async create(discordId, sessionData) {
     const payload = {
       discord_id: discordId,
 
-      // POW 정보
-      donation_mode: sessionData.donationMode || 'pow-writing',
-      plan_text: sessionData.planText || '',
+      // POW 정보 (새 필드명)
+      pow_fields: sessionData.donationMode || sessionData.powFields || 'pow-writing',
+      pow_plan_text: sessionData.planText || sessionData.powPlanText || '',
 
       // 시간 정보
       start_time: sessionData.startTime,
@@ -108,9 +110,9 @@ export const StudySessionAPI = {
       // donation_id: donations.session_id로 단방향 참조
     };
 
-    console.log('📤 공부 세션 페이로드:', payload);
+    console.log('📤 POW 세션 페이로드:', payload);
 
-    return apiRequest('/api/study-sessions', {
+    return apiRequest('/api/pow-sessions', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -118,7 +120,7 @@ export const StudySessionAPI = {
 
   // 여러 세션 일괄 생성
   async createBulk(discordId, sessions) {
-    return apiRequest('/api/study-sessions/bulk', {
+    return apiRequest('/api/pow-sessions/bulk', {
       method: 'POST',
       body: JSON.stringify({
         discord_id: discordId,
@@ -129,9 +131,12 @@ export const StudySessionAPI = {
             duration_minutes: s.durationMinutes,
           };
 
-          // optional 필드는 값이 있을 때만 포함
-          if (s.planText) {
-            session.plan_text = s.planText;
+          // optional 필드는 값이 있을 때만 포함 (새 필드명)
+          if (s.planText || s.powPlanText) {
+            session.pow_plan_text = s.planText || s.powPlanText;
+          }
+          if (s.donationMode || s.powFields) {
+            session.pow_fields = s.donationMode || s.powFields;
           }
           if (s.photoUrl) {
             session.photo_url = s.photoUrl;
@@ -143,24 +148,27 @@ export const StudySessionAPI = {
     });
   },
 
-  // 사용자의 공부 세션 조회
+  // 사용자의 POW 세션 조회
   async getByUser(discordId, limit = 50) {
-    return apiRequest(`/api/study-sessions/user/${discordId}?limit=${limit}`);
+    return apiRequest(`/api/pow-sessions/user/${discordId}?limit=${limit}`);
   },
 
-  // 오늘의 공부 세션 조회
+  // 오늘의 POW 세션 조회
   async getToday(discordId) {
-    return apiRequest(`/api/study-sessions/today/${discordId}`);
+    return apiRequest(`/api/pow-sessions/today/${discordId}`);
   },
 
-  // 사용자 공부 통계 조회
+  // 사용자 POW 통계 조회
   async getStats(discordId) {
-    return apiRequest(`/api/study-sessions/stats/${discordId}`);
+    return apiRequest(`/api/pow-sessions/stats/${discordId}`);
   },
 };
 
 /**
  * 기부 API
+ * - pow_fields: POW 분야 (pow-writing, pow-music 등)
+ * - donation_mode: 기부 범위 ('session' | 'total')
+ * - pow_plan_text: 오늘의 목표
  */
 export const DonationAPI = {
   // 기부 생성 (확장된 필드 포함)
@@ -168,15 +176,15 @@ export const DonationAPI = {
     const payload = {
       discord_id: discordId,
 
-      // 기부 정보
+      // 기부 정보 (새 필드명)
       amount: donationData.amount,
       currency: donationData.currency || 'SAT',
-      donation_mode: donationData.donationMode || 'pow-writing',
-      donation_scope: donationData.donationScope || 'session',
+      pow_fields: donationData.donationMode || donationData.powFields || 'pow-writing',
+      donation_mode: donationData.donationScope || donationData.scope || 'session',
       note: donationData.note || null,
 
-      // POW 정보 (기부 시점 스냅샷)
-      plan_text: donationData.planText || null,
+      // POW 정보 (기부 시점 스냅샷) - 새 필드명
+      pow_plan_text: donationData.planText || donationData.powPlanText || null,
       duration_minutes: donationData.durationMinutes || null,
       duration_seconds: donationData.durationSeconds || null,
       goal_minutes: donationData.goalMinutes || null,

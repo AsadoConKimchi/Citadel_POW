@@ -422,12 +422,14 @@ export const shareToDiscordAPI = async ({
 
   const botPayload = {
     discord_id: sessionData.user.id,
-    session_id: sessionId,
+    session_id: sessionId || null,
     photo_url: dataUrl,
-    plan_text: planText || "목표 미입력",
-    donation_mode: donationMode?.value || "pow-writing",
+    // 새 필드명 사용
+    pow_plan_text: planText || "목표 미입력",
+    pow_fields: donationMode?.value || "pow-writing",
     duration_seconds: durationSeconds || 0,
-    donation_scope: scopeValue,
+    // donation_mode: 기부 범위 ('session' | 'total')
+    donation_mode: scopeValue,
     donation_sats: donationSats,
     total_donated_sats: totalDonatedSats,
     total_accumulated_sats: totalAccumulatedSats,
