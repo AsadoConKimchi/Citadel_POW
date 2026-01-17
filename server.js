@@ -354,10 +354,25 @@ const sendDiscordShare = async ({
     ? `${DISCORD_WEBHOOK_URL}&wait=true`
     : `${DISCORD_WEBHOOK_URL}?wait=true`;
 
-  const response = await fetch(webhookUrl, {
-    method: "POST",
-    body: form,
-  });
+  // ⭐️ CASE3_JSON_TEST: true로 설정하면 CASE 3(적립금 기부)에서 JSON 전송 테스트
+  const CASE3_JSON_TEST = true;  // 🧪 CASE 3 JSON 전송 테스트 중
+
+  let response;
+  if (CASE3_JSON_TEST && isAccumulatedPayment) {
+    // CASE 3: JSON으로 전송 (이미지 없음) - 빈 첨부 영역 문제 해결
+    response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } else {
+    // CASE 1, 2 또는 테스트 비활성화: FormData로 전송 (기존 코드)
+    response = await fetch(webhookUrl, {
+      method: "POST",
+      body: form,
+    });
+  }
+
   if (!response.ok) {
     const text = await response.text();
     throw new Error(text || "Discord webhook failed");
