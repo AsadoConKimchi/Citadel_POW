@@ -243,6 +243,22 @@ export const StudySessionAPI = {
   async getStats(discordId) {
     return apiRequest(`/api/pow-sessions/stats/${discordId}`);
   },
+
+  // POW 세션 상태 업데이트 (Algorithm v3)
+  // 상태 전이: pending → shared → completed | failed
+  async updateStatus(sessionId, status) {
+    return apiRequest(`/api/pow-sessions/${sessionId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  // POW 세션 삭제 (롤백용)
+  async delete(sessionId) {
+    return apiRequest(`/api/pow-sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 /**
@@ -509,6 +525,49 @@ export const MeetupAPI = {
 };
 
 /**
+ * Discord Posts API (Algorithm v3)
+ * - status: 'pending' | 'completed' | 'failed'
+ */
+export const DiscordPostsAPI = {
+  // Discord에 공유 (인증카드 전송)
+  async share(discordId, shareData) {
+    return apiRequest('/api/discord-posts/share', {
+      method: 'POST',
+      body: JSON.stringify({
+        discord_id: discordId,
+        session_id: shareData.sessionId || null,
+        photo_url: shareData.photoUrl,
+        pow_plan_text: shareData.powPlanText || '',
+        pow_fields: shareData.powFields || 'pow-writing',
+        duration_seconds: shareData.durationSeconds || 0,
+        donation_mode: shareData.donationMode || 'session',
+        donation_sats: shareData.donationSats || 0,
+        total_donated_sats: shareData.totalDonatedSats || 0,
+        total_accumulated_sats: shareData.totalAccumulatedSats || 0,
+        donation_note: shareData.donationNote || '',
+        video_url: shareData.videoUrl || null,
+        video_filename: shareData.videoFilename || null,
+      }),
+    });
+  },
+
+  // Discord post 상태 업데이트
+  async updateStatus(messageId, status) {
+    return apiRequest(`/api/discord-posts/${messageId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  // Discord post 삭제
+  async delete(messageId) {
+    return apiRequest(`/api/discord-posts/${messageId}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+/**
  * 적립액 API (하이브리드 시스템)
  */
 export const AccumulatedSatsAPI = {
@@ -564,5 +623,6 @@ if (typeof window !== 'undefined') {
   window.RankingAPI = RankingAPI;
   window.MeetupAPI = MeetupAPI;
   window.AccumulatedSatsAPI = AccumulatedSatsAPI;
+  window.DiscordPostsAPI = DiscordPostsAPI;
   window.migrateLocalStorageToBackend = migrateLocalStorageToBackend;
 }
