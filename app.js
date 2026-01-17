@@ -2033,10 +2033,16 @@ const renderWalletInvoice = (invoice) => {
   walletInvoiceQr.src = qrUrl;
 
   // QR 표시 직후 자동 polling 시작 (3초 후)
-  if (invoice && pendingOnSuccessCallback) {
+  // ⭐️ WEBHOOK_ONLY_TEST: true로 설정하면 polling 비활성화 (webhook만 테스트)
+  const WEBHOOK_ONLY_TEST = true;  // 🧪 Webhook 테스트 중
+
+  if (invoice && pendingOnSuccessCallback && !WEBHOOK_ONLY_TEST) {
     console.log('🚀 QR 표시 완료 - 3초 후 polling 시작');
     currentInvoice = normalizedInvoice; // currentInvoice 업데이트
     setTimeout(() => startPaymentPolling(), 3000);
+  } else if (WEBHOOK_ONLY_TEST) {
+    console.log('🧪 WEBHOOK_ONLY_TEST 모드 - polling 비활성화, webhook만 대기');
+    currentInvoice = normalizedInvoice;
   }
 };
 
