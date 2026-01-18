@@ -2875,6 +2875,18 @@ const setAuthState = ({ authenticated, authorized, user, guild, error, userLevel
   if (user && user.id) {
     currentDiscordId = user.id;
 
+    // ============================================
+    // 🔧 FIX: Race Condition 수정 (2024-01)
+    // 문제: UserAPI.get()이 Promise.all과 별도로 실행되어
+    //       데이터 로드 완료 전에 UI 업데이트가 트리거됨
+    // 해결: UserAPI.get()을 Promise.all에 포함시켜 모든 데이터
+    //       로드 완료 후 UI 업데이트
+    // ============================================
+
+    // ⚠️ [OLD CODE - 주석 처리] Race Condition 원인
+    // UserAPI.get()이 독립적으로 실행되어 change 이벤트가
+    // 데이터 로드 완료 전에 UI를 업데이트함
+    /*
     // ⭐️ 백엔드에서 사용자 설정 로드 (donation_scope 등)
     if (typeof UserAPI !== 'undefined') {
       UserAPI.get(currentDiscordId)
@@ -2922,6 +2934,66 @@ const setAuthState = ({ authenticated, authorized, user, guild, error, userLevel
       updateDonationTotals();
       renderDonationHistory();
       console.log('모든 데이터를 API에서 로드 완료');
+    }).catch(error => {
+      console.error('데이터 로드 중 오류 발생:', error);
+    });
+    */
+
+    // ✅ [NEW CODE] 모든 API를 Promise.all에 포함
+    // UserAPI.get()도 함께 로드하여 race condition 방지
+    const loadUserSettingsFromAPI = async () => {
+      if (typeof UserAPI === 'undefined') return null;
+      try {
+        const response = await UserAPI.get(currentDiscordId);
+        if (response.success && response.data) {
+          return response.data;
+        }
+        return null;
+      } catch (error) {
+        console.error('사용자 설정 로드 실패:', error);
+        return null;
+      }
+    };
+
+    // 모든 데이터를 병렬로 API에서 로드 (UserAPI.get 포함)
+    Promise.all([
+      loadPendingDailyFromAPI(),
+      loadSessionsFromAPI(),
+      loadDonationsFromAPI(),
+      loadTotalDonatedFromAPI(),
+      loadUserSettingsFromAPI(),
+    ]).then(([, , , , userSettings]) => {
+      // 1. 사용자 설정 적용 (UI 업데이트 전에 값 설정)
+      if (userSettings) {
+        const { donation_scope } = userSettings;
+        if (donation_scope && donationScope) {
+          // 값만 설정 (change 이벤트 트리거하지 않음)
+          donationScope.value = donation_scope;
+          localStorage.setItem(donationScopeKey, donation_scope);
+
+          // 토글 버튼 UI 업데이트
+          toggleButtons.forEach(btn => {
+            if (btn.getAttribute('data-value') === donation_scope) {
+              btn.classList.add('active');
+            } else {
+              btn.classList.remove('active');
+            }
+          });
+
+          console.log(`✅ 백엔드에서 donation_scope 로드: ${donation_scope}`);
+        }
+      }
+
+      // 2. 모든 데이터 로드 완료 후 UI 업데이트
+      loadStudyPlan();
+      updateAccumulatedSats();
+      updateTodayDonationSummary();
+      renderSessions();
+      renderStudyHistoryPage();
+      renderDonationHistoryPage();
+      updateDonationTotals();
+      renderDonationHistory();
+      console.log('✅ 모든 데이터를 API에서 로드 완료 (race condition 수정됨)');
     }).catch(error => {
       console.error('데이터 로드 중 오류 발생:', error);
     });
